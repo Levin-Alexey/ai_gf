@@ -34,7 +34,8 @@ async def create_user(
         username=username,
         first_name=first_name,
         last_name=last_name,
-        # tone, interests, goals будут заполнены позже через опросник
+        interests=[],  # Пустой массив вместо None
+        goals=[],      # Пустой массив вместо None
     )
     session.add(user)
     await session.flush()
