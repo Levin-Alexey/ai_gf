@@ -1,0 +1,30 @@
+# Пример файла .env
+# Скопируйте этот файл в .env и заполните своими данными
+
+# ======================
+# Telegram Bot
+# ======================
+BOT_TOKEN=your_bot_token_from_BotFather
+
+# ======================
+# Database (PostgreSQL)
+# ======================
+# Формат: postgresql+asyncpg://user:password@host:port/database
+
+# Замените на данные ВАШЕГО сервера PostgreSQL:
+DATABASE_URL=postgresql+asyncpg://пользователь:пароль@хост:порт/ai_gf
+
+# Примеры:
+# DATABASE_URL=postgresql+asyncpg://postgres:mypassword@192.168.1.100:5432/ai_gf
+# DATABASE_URL=postgresql+asyncpg://dbuser:secret@db.server.com:5432/ai_gf
+# DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/ai_gf
+
+# ======================
+# Инструкция
+# ======================
+# 1. Получите BOT_TOKEN у @BotFather в Telegram
+# 2. На вашем PostgreSQL сервере создайте базу данных: CREATE DATABASE ai_gf;
+# 3. Примените SQL схему: psql -h ваш_хост -U ваш_пользователь -d ai_gf -f init_db.sql
+# 4. Создайте файл .env (без расширения) в корне проекта
+# 5. Скопируйте переменные выше и замените на свои значения
+

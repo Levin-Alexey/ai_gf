@@ -1,0 +1,16 @@
+# AI_GF Project Requirements
+
+# Aiogram - фреймворк для создания Telegram ботов
+aiogram==3.13.1
+
+# SQLAlchemy - ORM для работы с базами данных
+sqlalchemy==2.0.36
+
+# Дополнительные библиотеки
+aiosqlite==0.20.0  # Асинхронный драйвер для SQLite
+asyncpg==0.30.0  # Асинхронный драйвер для PostgreSQL
+psycopg2-binary==2.9.10  # PostgreSQL адаптер (бинарная версия)
+greenlet==3.1.1  # Требуется для асинхронного SQLAlchemy
+python-dotenv==1.0.1  # Для работы с переменными окружения (.env файлы)
+alembic==1.14.0  # Миграции базы данных
+
