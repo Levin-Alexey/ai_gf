@@ -63,6 +63,13 @@ source venv/bin/activate
 # 6. Установка зависимостей
 log_info "Устанавливаем Python зависимости..."
 pip install --upgrade pip setuptools wheel
+
+# Устанавливаем PyTorch CPU версию (без CUDA)
+log_info "Устанавливаем PyTorch CPU версию..."
+pip install torch>=1.12.0,<2.0.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Устанавливаем остальные зависимости
+log_info "Устанавливаем остальные зависимости..."
 pip install -r requirements.txt
 
 # 7. Создание .env файла
