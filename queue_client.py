@@ -68,7 +68,7 @@ class QueueClient:
             # Отправляем сообщение в очередь
             self.channel.basic_publish(
                 exchange='',
-                routing_key=self.queue_name,
+                routing_key="llm_requests",
                 body=json.dumps(message),
                 properties=pika.BasicProperties(
                     delivery_mode=2,  # Делаем сообщение постоянным
