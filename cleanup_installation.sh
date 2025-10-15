@@ -15,7 +15,7 @@ pip cache purge
 
 # Устанавливаем CPU версию PyTorch
 echo "📦 Устанавливаем PyTorch CPU версию..."
-pip install torch>=1.12.0,<2.0.0 --index-url https://download.pytorch.org/whl/cpu
+pip install torch==1.13.1+cpu torchvision==0.14.1+cpu torchaudio==0.13.1+cpu --index-url https://download.pytorch.org/whl/cpu
 
 echo "✅ Очистка завершена! Теперь установлен PyTorch CPU версия."
 echo "💡 Размер установки уменьшен с ~2GB до ~200MB"

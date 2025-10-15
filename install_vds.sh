@@ -66,11 +66,11 @@ pip install --upgrade pip setuptools wheel
 
 # Устанавливаем PyTorch CPU версию (без CUDA)
 log_info "Устанавливаем PyTorch CPU версию..."
-pip install torch>=1.12.0,<2.0.0 --index-url https://download.pytorch.org/whl/cpu
+pip install torch==1.13.1+cpu torchvision==0.14.1+cpu torchaudio==0.13.1+cpu --index-url https://download.pytorch.org/whl/cpu
 
 # Устанавливаем остальные зависимости
 log_info "Устанавливаем остальные зависимости..."
-pip install -r requirements.txt
+pip install -r requirements-no-torch.txt
 
 # 7. Создание .env файла
 log_info "Создаем .env файл..."
