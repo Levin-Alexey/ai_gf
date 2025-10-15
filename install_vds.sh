@@ -62,7 +62,7 @@ source venv/bin/activate
 
 # 6. Установка зависимостей
 log_info "Устанавливаем Python зависимости..."
-pip install --upgrade pip
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 
 # 7. Создание .env файла

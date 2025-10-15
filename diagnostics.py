@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import os
+import sys
 from dotenv import load_dotenv
 
 # Настройка логирования
@@ -14,6 +15,62 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+def check_python_compatibility():
+    """Проверка совместимости версии Python"""
+    logger.info("🐍 Проверяем версию Python...")
+    
+    python_version = sys.version_info
+    version_str = f"{python_version.major}.{python_version.minor}.{python_version.micro}"
+    logger.info(f"📊 Версия Python: {version_str}")
+    
+    if python_version >= (3, 11):
+        logger.info("✅ Python версия совместима с requirements.txt")
+        return "modern"
+    elif python_version >= (3, 8):
+        logger.warning("⚠️ Python версия требует requirements-legacy.txt")
+        return "legacy"
+    else:
+        logger.error("❌ Python версия слишком старая (< 3.8)")
+        return "incompatible"
+
+def check_installed_packages():
+    """Проверка установленных пакетов"""
+    logger.info("📦 Проверяем установленные пакеты...")
+    
+    required_packages = [
+        'numpy', 'torch', 'sentence-transformers', 'chromadb',
+        'transformers', 'scikit-learn', 'scipy'
+    ]
+    
+    missing_packages = []
+    incompatible_versions = []
+    
+    for package in required_packages:
+        try:
+            module = __import__(package.replace('-', '_'))
+            version = getattr(module, '__version__', 'unknown')
+            logger.info(f"✅ {package}: {version}")
+            
+            # Проверяем совместимость numpy
+            if package == 'numpy':
+                major_version = int(version.split('.')[0])
+                if major_version >= 2:
+                    python_version = sys.version_info
+                    if python_version < (3, 11):
+                        incompatible_versions.append(f"{package} {version} требует Python 3.11+")
+                        
+        except ImportError:
+            missing_packages.append(package)
+            logger.error(f"❌ {package}: не установлен")
+    
+    if missing_packages:
+        logger.error(f"❌ Отсутствуют пакеты: {', '.join(missing_packages)}")
+    
+    if incompatible_versions:
+        logger.error(f"❌ Несовместимые версии: {', '.join(incompatible_versions)}")
+    
+    return len(missing_packages) == 0 and len(incompatible_versions) == 0
 
 async def test_postgresql_connection():
     """Тест подключения к PostgreSQL"""
@@ -155,6 +212,22 @@ async def run_all_tests():
     """Запуск всех диагностических тестов"""
     logger.info("🚀 Запускаем диагностику системы...")
     logger.info("=" * 50)
+    
+    # Проверяем совместимость Python и пакетов
+    python_compat = check_python_compatibility()
+    packages_ok = check_installed_packages()
+    
+    logger.info("=" * 50)
+    
+    if python_compat == "incompatible":
+        logger.error("❌ КРИТИЧЕСКАЯ ОШИБКА: Python версия несовместима!")
+        logger.error("💡 Рекомендация: Обновите Python до версии 3.8+")
+        return
+    
+    if not packages_ok:
+        logger.error("❌ ПРОБЛЕМЫ С ПАКЕТАМИ!")
+        logger.error("💡 Рекомендация: Переустановите зависимости")
+        return
     
     tests = [
         ("PostgreSQL", test_postgresql_connection()),
