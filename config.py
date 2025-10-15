@@ -40,3 +40,7 @@ VECTOR_DB_PATH = os.getenv('VECTOR_DB_PATH', './vector_db')
 EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 VECTOR_SEARCH_LIMIT = int(os.getenv('VECTOR_SEARCH_LIMIT', 10))
 VECTOR_SIMILARITY_THRESHOLD = float(os.getenv('VECTOR_SIMILARITY_THRESHOLD', 0.7))
+
+# Настройки для распределенной архитектуры
+WORKER_SERVER = os.getenv('WORKER_SERVER', 'localhost')  # IP сервера воркера
+BOT_SERVER = os.getenv('BOT_SERVER', 'localhost')        # IP сервера бота

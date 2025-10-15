@@ -47,9 +47,23 @@ async def init_db() -> None:
     Инициализация базы данных (создание таблиц).
     ВНИМАНИЕ: Enum типы должны быть созданы вручную через SQL!
     """
-    async with engine.begin() as conn:
-        # Создаем таблицы (но не enum типы!)
-        await conn.run_sync(Base.metadata.create_all)
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info("🔗 Инициализация подключения к PostgreSQL...")
+        logger.info(f"📊 DATABASE_URL: {DATABASE_URL}")
+        
+        async with engine.begin() as conn:
+            # Создаем таблицы (но не enum типы!)
+            await conn.run_sync(Base.metadata.create_all)
+        
+        logger.info("✅ PostgreSQL база данных инициализирована успешно!")
+        logger.info("📋 Все таблицы созданы/проверены")
+    except Exception as e:
+        logger.error(f"❌ Ошибка инициализации базы данных: {e}")
+        logger.error(f"🔍 Проверьте подключение к PostgreSQL серверу")
+        raise
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

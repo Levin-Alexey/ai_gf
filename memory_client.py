@@ -33,6 +33,9 @@ class MemoryClient:
         """Добавить воспоминание о пользователе"""
         async with self.session_maker() as session:
             try:
+                logger.info(f"🔗 Подключаемся к PostgreSQL для добавления воспоминания пользователя {user_id}")
+                logger.info(f"📝 Тип воспоминания: {memory_type.value}, важность: {importance.value}")
+                
                 memory = UserMemory(
                     user_id=user_id,
                     content=content,
@@ -46,6 +49,7 @@ class MemoryClient:
                 session.add(memory)
                 await session.commit()
                 await session.refresh(memory)
+                logger.info(f"✅ Воспоминание сохранено в PostgreSQL с ID: {memory.id}")
                 
                 # Добавляем в векторную базу данных
                 await vector_client.add_memory(
@@ -158,8 +162,13 @@ class MemoryClient:
     ) -> List[Dict]:
         """Семантический поиск воспоминаний с использованием векторной базы"""
         try:
+            logger.info(f"🔍 Начинаем семантический поиск для пользователя {user_id}")
+            logger.info(f"📝 Запрос: {query[:50]}...")
+            logger.info(f"📊 Лимит результатов: {limit}")
+            
             # Инициализируем векторную базу если нужно
             if not vector_client.initialized:
+                logger.info("🚀 Инициализируем векторную базу данных...")
                 await vector_client.initialize()
             
             # Преобразуем типы воспоминаний в строки
