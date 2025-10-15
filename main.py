@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 
 from database import init_db, close_db
 from handlers import main_router
+from redis_client import redis_client
+from queue_client import queue_client
 
 # Настройка логирования
 logging.basicConfig(
@@ -37,25 +39,46 @@ dp.include_router(main_router)
 
 async def on_startup():
     """Действия при запуске бота"""
-    logger.info("Запуск бота...")
+    logger.info("🚀 Запуск AI Girlfriend Bot...")
     try:
         # Попытка инициализации БД (создание таблиц, если их нет)
         # ВАЖНО: Enum типы должны быть созданы вручную через init_db.sql!
+        logger.info("📡 Инициализация PostgreSQL...")
         await init_db()
-        logger.info("База данных инициализирована")
+        logger.info("✅ PostgreSQL база данных инициализирована")
+        
+        # Подключаемся к Redis
+        logger.info("📡 Подключение к Redis...")
+        await redis_client.connect()
+        
+        # Подключаемся к RabbitMQ
+        logger.info("📡 Подключение к RabbitMQ...")
+        queue_client.connect()
+        
+        logger.info("🎉 Все сервисы успешно подключены!")
+        logger.info("💕 AI Girlfriend Bot готов к работе!")
+        
     except Exception as e:
-        logger.error(f"Ошибка при инициализации БД: {e}")
+        logger.error(f"Ошибка при инициализации: {e}")
         logger.warning(
             "Убедитесь, что вы выполнили init_db.sql "
-            "для создания enum типов!"
+            "для создания enum типов и настроили Redis/RabbitMQ!"
         )
 
 
 async def on_shutdown():
     """Действия при остановке бота"""
     logger.info("Остановка бота...")
+    
+    # Закрываем соединения
     await close_db()
     logger.info("Соединение с БД закрыто")
+    
+    await redis_client.disconnect()
+    logger.info("Соединение с Redis закрыто")
+    
+    queue_client.disconnect()
+    logger.info("Соединение с RabbitMQ закрыто")
 
 
 async def main():

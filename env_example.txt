@@ -20,6 +20,29 @@ DATABASE_URL=postgresql+asyncpg://пользователь:пароль@хост
 # DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/ai_gf
 
 # ======================
+# Redis (для хранения истории чатов)
+# ======================
+REDIS_HOST=5.23.53.246
+REDIS_PORT=6379
+REDIS_PASSWORD=admin123
+
+# ======================
+# RabbitMQ (для очередей сообщений)
+# ======================
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USER=guest
+RABBITMQ_PASSWORD=guest
+RABBITMQ_VHOST=/
+
+# ======================
+# LLM API (настройки для AI модели)
+# ======================
+LLM_API_URL=https://api.openai.com/v1/chat/completions
+LLM_API_KEY=your_openai_api_key_here
+LLM_MODEL=gpt-3.5-turbo
+
+# ======================
 # Инструкция
 # ======================
 # 1. Получите BOT_TOKEN у @BotFather в Telegram

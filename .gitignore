@@ -59,3 +59,10 @@ coverage.xml
 
 # Local database
 *.sqlite3
+
+# Vector database (ChromaDB)
+vector_db/
+*.chroma
+
+# Hugging Face cache
+.cache/
