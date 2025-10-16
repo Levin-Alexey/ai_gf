@@ -26,13 +26,18 @@ class QueueClient:
             logger.info(f"🔗 Подключаемся к RabbitMQ: {RABBITMQ_HOST}:{RABBITMQ_PORT}")
             logger.info(f"📊 RabbitMQ конфигурация: user={RABBITMQ_USER}, vhost={RABBITMQ_VHOST}")
             
-            # Создаем параметры подключения
+            # Создаем параметры подключения с увеличенными таймаутами
             credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD)
             parameters = pika.ConnectionParameters(
                 host=RABBITMQ_HOST,
                 port=RABBITMQ_PORT,
                 virtual_host=RABBITMQ_VHOST,
-                credentials=credentials
+                credentials=credentials,
+                connection_attempts=3,
+                retry_delay=5,
+                socket_timeout=30,
+                blocked_connection_timeout=300,
+                heartbeat=600
             )
             
             # Подключаемся к RabbitMQ
