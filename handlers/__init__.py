@@ -16,7 +16,7 @@ main_router = Router()
 main_router.include_router(start_router)
 main_router.include_router(questionnaire_router)
 main_router.include_router(menu_router)
-main_router.include_router(chat_router)  # chat перед messages
+main_router.include_router(chat_router)
 main_router.include_router(character_settings_router)
 main_router.include_router(bot_settings_router)
 main_router.include_router(messages_router)  # messages в конце (catch-all)

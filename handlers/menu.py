@@ -69,6 +69,7 @@ def get_settings_keyboard():
 @router.message(F.text == "⚙️ Настройки")
 async def handle_settings(message: Message):
     """Обработчик кнопки 'Настройки'"""
+    logger.info(f"⚙️ Получено сообщение 'Настройки' от пользователя {message.from_user.id}")
     async with async_session_maker() as session:
         user = await get_user_by_telegram_id(
             session,

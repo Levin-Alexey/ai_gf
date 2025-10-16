@@ -73,6 +73,7 @@ def get_character_settings_keyboard():
 @router.message(F.text == "🎨 Настроить характер")
 async def handle_character_settings(message: Message):
     """Обработчик кнопки 'Настроить характер'"""
+    logger.info(f"🎨 Получено сообщение 'Настроить характер' от пользователя {message.from_user.id}")
     async with async_session_maker() as session:
         user = await get_user_by_telegram_id(
             session,
