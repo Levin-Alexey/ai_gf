@@ -376,7 +376,9 @@ class LLMWorker:
         try:
             headers = {
                 "Authorization": f"Bearer {LLM_API_KEY}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://ai-gf-bot.com",  # Обязательно для OpenRouter
+                "X-Title": "AI Girlfriend Bot"  # Обязательно для OpenRouter
             }
             
             data = {
