@@ -6,9 +6,7 @@ from aiogram import Router, F
 from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
-    KeyboardButton,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
+    KeyboardButton
 )
 
 from database import async_session_maker
@@ -168,7 +166,7 @@ async def handle_select_persona(message: Message):
             )
             return
         
-        # Создаем inline клавиатуру с персонажами
+        # Создаем обычную клавиатуру с персонажами
         keyboard_buttons = []
         
         # Эмодзи-аватары для каждого персонажа
@@ -183,21 +181,19 @@ async def handle_select_persona(message: Message):
         for persona in personas:
             emoji = persona_emojis.get(persona.name, '👤')
             keyboard_buttons.append([
-                InlineKeyboardButton(
-                    text=f"{emoji} {persona.name}",
-                    callback_data=f"select_persona_{persona.id}"
-                )
+                KeyboardButton(text=f"{emoji} {persona.name}")
             ])
         
         # Добавляем кнопку "Назад"
         keyboard_buttons.append([
-            InlineKeyboardButton(
-                text="🔙 Назад к настройкам",
-                callback_data="back_to_character_settings"
-            )
+            KeyboardButton(text="🔙 Назад к настройкам")
         ])
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=keyboard_buttons,
+            resize_keyboard=True,
+            one_time_keyboard=False
+        )
         
         # Формируем описание персонажей
         personas_text = "👤 Выбери личность для общения:\n\n"
@@ -215,50 +211,6 @@ async def handle_select_persona(message: Message):
         await send_persona_images(message, personas)
 
 
-@router.callback_query(F.data.startswith("select_persona_"))
-async def handle_persona_selection_callback(callback: CallbackQuery):
-    """Обработчик выбора конкретной личности через callback"""
-    persona_id = int(callback.data.split("_")[2])
-    
-    async with async_session_maker() as session:
-        # Получаем персонажа по ID
-        selected_persona = await get_persona_by_id(session, persona_id)
-        
-        if not selected_persona:
-            await callback.answer("❌ Персонаж не найден", show_alert=True)
-            return
-        
-        # Получаем пользователя
-        user = await get_user_by_telegram_id(
-            session,
-            telegram_id=callback.from_user.id
-        )
-        
-        if not user:
-            await callback.answer("⚠️ Сначала нужно пройти настройку", show_alert=True)
-            return
-        
-        # Устанавливаем персонажа для пользователя
-        await set_user_persona(session, user.id, selected_persona.id)
-        await session.commit()
-        
-        # Обновляем сообщение
-        await callback.message.edit_text(
-            f"✅ Личность **{selected_persona.name}** выбрана!\n\n"
-            f"Теперь я буду общаться с тобой в образе {selected_persona.name}.\n\n"
-            f"**{selected_persona.short_desc}**\n\n"
-            f"Можешь начать чат и почувствовать разницу! 💫",
-            parse_mode="Markdown"
-        )
-        
-        await callback.answer(f"Выбрана личность: {selected_persona.name}")
-
-
-@router.callback_query(F.data == "back_to_character_settings")
-async def handle_back_to_character_settings_callback(callback: CallbackQuery):
-    """Обработчик кнопки 'Назад к настройкам'"""
-    await callback.message.delete()
-    await handle_character_settings(callback.message)
 
 
 @router.message(F.text == "🔙 Назад к настройкам характера")
@@ -272,3 +224,66 @@ async def handle_back_to_settings(message: Message):
     """Обработчик кнопки 'Назад к настройкам'"""
     from .menu import handle_settings
     await handle_settings(message)
+
+
+# Обработчики выбора персонажей
+@router.message(F.text == "🌌 Нейра")
+async def handle_select_neira(message: Message):
+    """Обработчик выбора Нейры"""
+    await _select_persona_by_name(message, "Нейра")
+
+
+@router.message(F.text == "🕵️ Фокс")
+async def handle_select_fox(message: Message):
+    """Обработчик выбора Фокса"""
+    await _select_persona_by_name(message, "Фокс")
+
+
+@router.message(F.text == "☕ Лина")
+async def handle_select_lina(message: Message):
+    """Обработчик выбора Лины"""
+    await _select_persona_by_name(message, "Лина")
+
+
+@router.message(F.text == "📚 Эва")
+async def handle_select_eva(message: Message):
+    """Обработчик выбора Эвы"""
+    await _select_persona_by_name(message, "Эва")
+
+
+@router.message(F.text == "💻 Рейна")
+async def handle_select_reyna(message: Message):
+    """Обработчик выбора Рейны"""
+    await _select_persona_by_name(message, "Рейна")
+
+
+async def _select_persona_by_name(message: Message, persona_name: str):
+    """Общая функция для выбора персонажа по имени"""
+    async with async_session_maker() as session:
+        # Получаем персонажа по имени
+        persona = await get_persona_by_key(session, persona_name.lower())
+        
+        if not persona:
+            await message.answer("❌ Персонаж не найден")
+            return
+        
+        # Получаем пользователя
+        user = await get_user_by_telegram_id(session, telegram_id=message.from_user.id)
+        
+        if not user:
+            await message.answer("⚠️ Сначала нужно пройти настройку")
+            return
+        
+        # Устанавливаем персонажа для пользователя
+        await set_user_persona(session, user.id, persona.id)
+        await session.commit()
+        
+        # Отправляем подтверждение
+        await message.answer(
+            f"✅ Личность **{persona.name}** выбрана!\n\n"
+            f"Теперь я буду общаться с тобой в образе {persona.name}.\n\n"
+            f"**{persona.short_desc}**\n\n"
+            f"Можешь начать чат и почувствовать разницу! 💫",
+            parse_mode="Markdown",
+            reply_markup=get_character_settings_keyboard()
+        )
