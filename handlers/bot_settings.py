@@ -6,7 +6,8 @@ from aiogram import Router, F
 from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
-    KeyboardButton
+    KeyboardButton,
+    CallbackQuery
 )
 
 from database import async_session_maker
@@ -35,11 +36,26 @@ def get_bot_settings_keyboard():
 @router.message(F.text == "🤖 Настройки бота")
 async def handle_bot_settings(message: Message):
     """Обработчик кнопки 'Настройки бота'"""
+    await _show_bot_settings(message)
+
+
+@router.callback_query(F.data == "bot_settings")
+async def handle_bot_settings_callback(callback: CallbackQuery):
+    """Обработчик callback кнопки 'Настройки бота'"""
+    logger.info(f"🤖 Получен callback 'bot_settings' от пользователя {callback.from_user.id}")
+    if callback.message:
+        await _show_bot_settings(callback.message, callback.from_user)
+    await callback.answer()
+
+
+async def _show_bot_settings(message: Message, from_user=None):
+    """Общая функция для показа настроек бота"""
+    if not message:
+        return
+    user_id = from_user.id if from_user else message.from_user.id
+    
     async with async_session_maker() as session:
-        user = await get_user_by_telegram_id(
-            session,
-            telegram_id=message.from_user.id
-        )
+        user = await get_user_by_telegram_id(session, telegram_id=user_id)
 
     if user:
         bot_settings_text = (

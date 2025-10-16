@@ -74,11 +74,26 @@ def get_character_settings_keyboard():
 async def handle_character_settings(message: Message):
     """Обработчик кнопки 'Настроить характер'"""
     logger.info(f"🎨 Получено сообщение 'Настроить характер' от пользователя {message.from_user.id}")
+    await _show_character_settings(message)
+
+
+@router.callback_query(F.data == "character_settings")
+async def handle_character_settings_callback(callback: CallbackQuery):
+    """Обработчик callback кнопки 'Настроить характер'"""
+    logger.info(f"🎨 Получен callback 'character_settings' от пользователя {callback.from_user.id}")
+    if callback.message:
+        await _show_character_settings(callback.message, callback.from_user)
+    await callback.answer()
+
+
+async def _show_character_settings(message: Message, from_user=None):
+    """Общая функция для показа настроек характера"""
+    if not message:
+        return
+    user_id = from_user.id if from_user else message.from_user.id
+    
     async with async_session_maker() as session:
-        user = await get_user_by_telegram_id(
-            session,
-            telegram_id=message.from_user.id
-        )
+        user = await get_user_by_telegram_id(session, telegram_id=user_id)
 
     if user:
         # Получаем текущую личность
