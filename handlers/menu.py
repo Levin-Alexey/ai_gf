@@ -129,9 +129,13 @@ async def handle_character_settings_callback(callback: CallbackQuery):
     """Обработчик кнопки 'Настроить характер'"""
     logger.info(f"🎨 Получен callback 'character_settings' от пользователя {callback.from_user.id}")
     
+    # Создаем объект Message для передачи в функцию
+    message = callback.message
+    message.from_user = callback.from_user  # Исправляем from_user
+    
     # Импортируем функцию из character_settings
     from .character_settings import handle_character_settings
-    await handle_character_settings(callback.message)
+    await handle_character_settings(message)
     await callback.answer()
 
 
@@ -140,9 +144,13 @@ async def handle_bot_settings_callback(callback: CallbackQuery):
     """Обработчик кнопки 'Настройки бота'"""
     logger.info(f"🤖 Получен callback 'bot_settings' от пользователя {callback.from_user.id}")
     
+    # Создаем объект Message для передачи в функцию
+    message = callback.message
+    message.from_user = callback.from_user  # Исправляем from_user
+    
     # Импортируем функцию из bot_settings
     from .bot_settings import handle_bot_settings
-    await handle_bot_settings(callback.message)
+    await handle_bot_settings(message)
     await callback.answer()
 
 
@@ -154,7 +162,11 @@ async def handle_back_to_main_callback(callback: CallbackQuery):
     # Удаляем сообщение с inline кнопками
     await callback.message.delete()
     
+    # Создаем объект Message для передачи в функцию
+    message = callback.message
+    message.from_user = callback.from_user  # Исправляем from_user
+    
     # Показываем главное меню
     user_name = callback.from_user.first_name or "друг"
-    await show_main_menu(callback.message, user_name)
+    await show_main_menu(message, user_name)
     await callback.answer()
