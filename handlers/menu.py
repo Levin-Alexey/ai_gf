@@ -3,10 +3,13 @@
 """
 import logging
 from aiogram import Router, F
+from aiogram.types import CallbackQuery
 from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
-    KeyboardButton
+    KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
 )
 
 from database import async_session_maker
@@ -90,9 +93,19 @@ async def handle_settings(message: Message):
             f"📝 О себе: {'Заполнено' if user.about else 'Не заполнено'}\n\n"
             f"Выбери, что хочешь настроить:"
         )
+        
+        # Создаем inline клавиатуру
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🎨 Настроить характер", callback_data="character_settings")],
+                [InlineKeyboardButton(text="🤖 Настройки бота", callback_data="bot_settings")],
+                [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_main")]
+            ]
+        )
+        
         await message.answer(
             settings_text,
-            reply_markup=get_settings_keyboard()
+            reply_markup=keyboard
         )
     else:
         await message.answer(
@@ -108,3 +121,40 @@ async def handle_back_to_menu(message: Message):
         if message.from_user else "друг"
     )
     await show_main_menu(message, user_name)
+
+
+# Обработчики inline кнопок
+@router.callback_query(F.data == "character_settings")
+async def handle_character_settings_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Настроить характер'"""
+    logger.info(f"🎨 Получен callback 'character_settings' от пользователя {callback.from_user.id}")
+    
+    # Импортируем функцию из character_settings
+    from .character_settings import handle_character_settings
+    await handle_character_settings(callback.message)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "bot_settings")
+async def handle_bot_settings_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Настройки бота'"""
+    logger.info(f"🤖 Получен callback 'bot_settings' от пользователя {callback.from_user.id}")
+    
+    # Импортируем функцию из bot_settings
+    from .bot_settings import handle_bot_settings
+    await handle_bot_settings(callback.message)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "back_to_main")
+async def handle_back_to_main_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Назад в меню'"""
+    logger.info(f"🔙 Получен callback 'back_to_main' от пользователя {callback.from_user.id}")
+    
+    # Удаляем сообщение с inline кнопками
+    await callback.message.delete()
+    
+    # Показываем главное меню
+    user_name = callback.from_user.first_name or "друг"
+    await show_main_menu(callback.message, user_name)
+    await callback.answer()
