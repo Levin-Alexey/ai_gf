@@ -113,14 +113,14 @@ async def test_redis_connection():
         logger.error(f"🔍 REDIS_PORT: {os.getenv('REDIS_PORT', 'НЕ НАЙДЕН')}")
         return False
 
-def test_rabbitmq_connection():
+async def test_rabbitmq_connection():
     """Тест подключения к RabbitMQ"""
     try:
         logger.info("🔍 Тестируем подключение к RabbitMQ...")
         from queue_client import queue_client
         
-        queue_client.connect()
-        queue_client.disconnect()
+        await queue_client.connect()
+        await queue_client.disconnect()
         
         logger.info("✅ RabbitMQ подключение работает!")
         return True

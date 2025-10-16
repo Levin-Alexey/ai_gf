@@ -53,7 +53,7 @@ async def on_startup():
         
         # Подключаемся к RabbitMQ
         logger.info("📡 Подключение к RabbitMQ...")
-        queue_client.connect()
+        await queue_client.connect()
         
         logger.info("🎉 Все сервисы успешно подключены!")
         logger.info("💕 AI Girlfriend Bot готов к работе!")
@@ -77,7 +77,7 @@ async def on_shutdown():
     await redis_client.disconnect()
     logger.info("Соединение с Redis закрыто")
     
-    queue_client.disconnect()
+    await queue_client.disconnect()
     logger.info("Соединение с RabbitMQ закрыто")
 
 

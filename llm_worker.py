@@ -32,7 +32,7 @@ class LLMWorker:
             
             # Подключаемся к RabbitMQ
             logger.info("📡 Инициализация RabbitMQ...")
-            queue_client.connect()
+            await queue_client.connect()
             
             # Инициализируем интеграцию с ботом
             logger.info("📡 Инициализация Bot Integration...")
@@ -46,7 +46,7 @@ class LLMWorker:
             logger.info("👂 Начинаем прослушивание запросов из RabbitMQ...")
             
             # Начинаем прослушивание очереди запросов
-            queue_client.consume_requests(self.handle_llm_request)
+            await queue_client.consume_requests(self.handle_llm_request)
             
         except Exception as e:
             logger.error(f"Ошибка запуска LLM Worker: {e}")
@@ -59,7 +59,7 @@ class LLMWorker:
                 await self.session.close()
             
             await redis_client.disconnect()
-            queue_client.disconnect()
+            await queue_client.disconnect()
             await bot_integration.close()
             
             logger.info("LLM Worker остановлен")
@@ -67,11 +67,11 @@ class LLMWorker:
         except Exception as e:
             logger.error(f"Ошибка остановки LLM Worker: {e}")
     
-    def handle_llm_request(self, message: Dict[str, Any]):
+    async def handle_llm_request(self, message: Dict[str, Any]):
         """Обработка запроса к LLM"""
         try:
             # Запускаем асинхронную обработку
-            asyncio.create_task(self.process_llm_request(message))
+            await self.process_llm_request(message)
         except Exception as e:
             logger.error(f"Ошибка обработки запроса LLM: {e}")
     

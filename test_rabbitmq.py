@@ -1,6 +1,7 @@
 """
 Простой тест подключения к RabbitMQ
 """
+import asyncio
 import logging
 from queue_client import queue_client
 from config import RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_VHOST
@@ -8,7 +9,7 @@ from config import RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_VHOST
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def test_rabbitmq():
+async def test_rabbitmq():
     """Тестируем подключение к RabbitMQ"""
     try:
         logger.info("🧪 Тестируем подключение к RabbitMQ...")
@@ -17,7 +18,7 @@ def test_rabbitmq():
         logger.info(f"📊 Vhost: {RABBITMQ_VHOST}")
         
         # Пытаемся подключиться
-        queue_client.connect()
+        await queue_client.connect()
         logger.info("✅ Подключение к RabbitMQ успешно!")
         
         # Пытаемся отправить тестовое сообщение
@@ -28,11 +29,11 @@ def test_rabbitmq():
             "timestamp": 1234567890
         }
         
-        queue_client.publish_message(test_message)
+        await queue_client.publish_message(test_message)
         logger.info("✅ Тестовое сообщение отправлено в очередь!")
         
         # Отключаемся
-        queue_client.disconnect()
+        await queue_client.disconnect()
         logger.info("✅ Отключение от RabbitMQ успешно!")
         
         return True
@@ -43,7 +44,7 @@ def test_rabbitmq():
         return False
 
 if __name__ == "__main__":
-    success = test_rabbitmq()
+    success = asyncio.run(test_rabbitmq())
     if success:
         print("\n🎉 RabbitMQ работает корректно!")
     else:

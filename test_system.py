@@ -34,8 +34,8 @@ async def test_system():
         
         # 4. Тест подключения к RabbitMQ
         print("\n4️⃣ Тестируем подключение к RabbitMQ...")
-        queue_client.connect()
-        queue_client.disconnect()
+        await queue_client.connect()
+        await queue_client.disconnect()
         print("✅ RabbitMQ подключение работает!")
         
         # 5. Тест инициализации векторной базы

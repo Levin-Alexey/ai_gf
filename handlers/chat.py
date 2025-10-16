@@ -173,7 +173,7 @@ async def handle_chat_message(message: Message):
             "timestamp": int(time.time())
         }
         
-        queue_client.publish_message(queue_message)
+        await queue_client.publish_message(queue_message)
         
         # Отправляем подтверждение пользователю
         await message.answer(
