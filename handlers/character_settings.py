@@ -3,7 +3,6 @@
 """
 import logging
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
 from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
@@ -77,13 +76,6 @@ async def handle_character_settings(message: Message):
     await _show_character_settings(message)
 
 
-@router.callback_query(F.data == "character_settings")
-async def handle_character_settings_callback(callback: CallbackQuery):
-    """Обработчик callback кнопки 'Настроить характер'"""
-    logger.info(f"🎨 Получен callback 'character_settings' от пользователя {callback.from_user.id}")
-    if callback.message:
-        await _show_character_settings(callback.message, callback.from_user)
-    await callback.answer()
 
 
 async def _show_character_settings(message: Message, from_user=None):
