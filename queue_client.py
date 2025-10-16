@@ -116,9 +116,22 @@ class QueueClient:
             
             # Настраиваем потребление сообщений
             await self.channel.set_qos(prefetch_count=1)
-            await queue.consume(on_message)
+            consumer_tag = await queue.consume(on_message)
             
             logger.info("Начинаем прослушивание запросов...")
+            
+            # Сохраняем consumer_tag для возможности остановки
+            self._consumer_tag = consumer_tag
+            
+            # Бесконечный цикл для поддержания работы воркера
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                logger.info("Получен сигнал остановки потребления")
+                # Останавливаем потребление
+                if hasattr(self, '_consumer_tag') and self._consumer_tag:
+                    await queue.cancel(self._consumer_tag)
             
         except Exception as e:
             logger.error(f"Ошибка потребления сообщений: {e}")
@@ -127,8 +140,11 @@ class QueueClient:
     async def stop_consuming(self):
         """Остановить потребление сообщений"""
         try:
-            if self.channel and not self.channel.is_closed:
-                # В aio-pika остановка происходит через отмену задач или закрытие канала
+            if hasattr(self, '_consumer_tag') and self._consumer_tag:
+                # Получаем очередь и отменяем потребление
+                queue: Queue = await self.channel.get_queue(self.queue_name)
+                await queue.cancel(self._consumer_tag)
+                self._consumer_tag = None
                 logger.info("Потребление сообщений остановлено")
         except Exception as e:
             logger.error(f"Ошибка остановки потребления: {e}")

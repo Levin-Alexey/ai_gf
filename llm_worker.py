@@ -46,7 +46,16 @@ class LLMWorker:
             logger.info("👂 Начинаем прослушивание запросов из RabbitMQ...")
             
             # Начинаем прослушивание очереди запросов
-            await queue_client.consume_requests(self.handle_llm_request)
+            # Этот метод будет блокировать выполнение
+            try:
+                await queue_client.consume_requests(self.handle_llm_request)
+            except asyncio.CancelledError:
+                logger.info("Получен сигнал остановки воркера")
+            except KeyboardInterrupt:
+                logger.info("Получен сигнал прерывания (Ctrl+C)")
+            except Exception as e:
+                logger.error(f"Ошибка в процессе прослушивания: {e}")
+                raise
             
         except Exception as e:
             logger.error(f"Ошибка запуска LLM Worker: {e}")
@@ -55,9 +64,14 @@ class LLMWorker:
     async def stop(self):
         """Остановка воркера"""
         try:
+            # Останавливаем потребление сообщений
+            await queue_client.stop_consuming()
+            
+            # Закрываем HTTP сессию
             if self.session:
                 await self.session.close()
             
+            # Отключаемся от всех сервисов
             await redis_client.disconnect()
             await queue_client.disconnect()
             await bot_integration.close()
