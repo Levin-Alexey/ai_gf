@@ -7,7 +7,9 @@ from datetime import datetime
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import User, GFTone, GFInterest, GFGoal
+from models import (
+    User, GFTone, GFInterest, GFGoal, Persona, UserPersonaSetting
+)
 
 
 async def get_user_by_telegram_id(
@@ -157,3 +159,111 @@ async def get_users_by_tone(
         select(User).where(User.tone == tone)
     )
     return list(result.scalars().all())
+
+
+# =========================
+# CRUD функции для персонажей
+# =========================
+
+async def get_active_personas(session: AsyncSession) -> List[Persona]:
+    """Получить всех активных персонажей"""
+    result = await session.execute(
+        select(Persona).where(Persona.is_active.is_(True))
+    )
+    return list(result.scalars().all())
+
+
+async def get_persona_by_key(session: AsyncSession, key: str) -> Optional[Persona]:
+    """Получить персонажа по ключу"""
+    result = await session.execute(
+        select(Persona).where(
+            Persona.key == key, Persona.is_active.is_(True)
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_persona_by_id(
+    session: AsyncSession, persona_id: int
+) -> Optional[Persona]:
+    """Получить персонажа по ID"""
+    result = await session.execute(
+        select(Persona).where(Persona.id == persona_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_current_persona(
+    session: AsyncSession, user_id: int
+) -> Optional[Persona]:
+    """Получить текущего персонажа пользователя"""
+    result = await session.execute(
+        select(Persona)
+        .join(UserPersonaSetting)
+        .where(
+            UserPersonaSetting.user_id == user_id,
+            UserPersonaSetting.is_current.is_(True)
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_persona_setting(
+    session: AsyncSession, user_id: int
+) -> Optional[UserPersonaSetting]:
+    """Получить настройки персонажа пользователя"""
+    result = await session.execute(
+        select(UserPersonaSetting)
+        .where(
+            UserPersonaSetting.user_id == user_id,
+            UserPersonaSetting.is_current.is_(True)
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def set_user_persona(
+    session: AsyncSession,
+    user_id: int,
+    persona_id: int,
+    overrides: Optional[dict] = None
+) -> UserPersonaSetting:
+    """Установить персонажа для пользователя"""
+    # Сначала сбрасываем текущий персонаж
+    await session.execute(
+        update(UserPersonaSetting)
+        .where(
+            UserPersonaSetting.user_id == user_id,
+            UserPersonaSetting.is_current.is_(True)
+        )
+        .values(is_current=False)
+    )
+    
+    # Создаем новую запись с выбранным персонажем
+    new_setting = UserPersonaSetting(
+        user_id=user_id,
+        persona_id=persona_id,
+        overrides=overrides or {},
+        is_current=True
+    )
+    
+    session.add(new_setting)
+    await session.flush()
+    await session.refresh(new_setting)
+    return new_setting
+
+
+async def update_persona_overrides(
+    session: AsyncSession,
+    user_id: int,
+    overrides: dict
+) -> None:
+    """Обновить кастомизации персонажа пользователя"""
+    await session.execute(
+        update(UserPersonaSetting)
+        .where(
+            UserPersonaSetting.user_id == user_id,
+            UserPersonaSetting.is_current.is_(True)
+        )
+        .values(overrides=overrides)
+    )

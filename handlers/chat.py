@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database import async_session_maker
-from crud import get_user_by_telegram_id
+from crud import get_user_by_telegram_id, get_user_current_persona
 from redis_client import redis_client
 from queue_client import queue_client
 from .menu import get_main_menu_keyboard
@@ -165,12 +165,17 @@ async def handle_chat_message(message: Message):
             )
             return
         
+        # Получаем текущего персонажа пользователя
+        async with async_session_maker() as session:
+            current_persona = await get_user_current_persona(session, user_id)
+        
         # Отправляем сообщение в очередь для обработки LLM
         queue_message = {
             "user_id": user_id,
             "chat_id": chat_id,
             "message": user_message,
-            "timestamp": int(time.time())
+            "timestamp": int(time.time()),
+            "persona_id": current_persona.id if current_persona else None
         }
         
         await queue_client.publish_message(queue_message)

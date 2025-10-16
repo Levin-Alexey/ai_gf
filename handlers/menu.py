@@ -52,6 +52,20 @@ async def handle_payment(message: Message):
     )
 
 
+def get_settings_keyboard():
+    """Создать клавиатуру настроек"""
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🎨 Настроить характер")],
+            [KeyboardButton(text="🤖 Настройки бота")],
+            [KeyboardButton(text="🔙 Назад в меню")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+    return keyboard
+
+
 @router.message(F.text == "⚙️ Настройки")
 async def handle_settings(message: Message):
     """Обработчик кнопки 'Настройки'"""
@@ -73,10 +87,23 @@ async def handle_settings(message: Message):
             f"🎯 Интересов: {interests_count}\n"
             f"🎯 Целей: {goals_count}\n"
             f"📝 О себе: {'Заполнено' if user.about else 'Не заполнено'}\n\n"
-            f"Функция редактирования в разработке..."
+            f"Выбери, что хочешь настроить:"
         )
-        await message.answer(settings_text)
+        await message.answer(
+            settings_text,
+            reply_markup=get_settings_keyboard()
+        )
     else:
         await message.answer(
             "⚠️ Сначала нужно пройти настройку. Напиши /start"
         )
+
+
+@router.message(F.text == "🔙 Назад в меню")
+async def handle_back_to_menu(message: Message):
+    """Обработчик кнопки 'Назад в меню'"""
+    user_name = (
+        message.from_user.first_name or "друг"
+        if message.from_user else "друг"
+    )
+    await show_main_menu(message, user_name)

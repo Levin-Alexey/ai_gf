@@ -11,6 +11,8 @@ from bot_integration import bot_integration
 from memory_client import memory_client
 from models import MemoryType, MemoryImportance
 from config import LLM_API_URL, LLM_API_KEY, LLM_MODEL
+from database import async_session_maker
+from crud import get_persona_by_id, get_user_persona_setting
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +97,7 @@ class LLMWorker:
             user_id = message.get('user_id')
             user_message = message.get('message')
             chat_id = message.get('chat_id')
+            persona_id = message.get('persona_id')
             
             logger.info(f"📨 Получен запрос от пользователя {user_id}: {user_message[:50]}...")
             
@@ -131,13 +134,26 @@ class LLMWorker:
             # Получаем недавние эмоции
             recent_emotions = await memory_client.get_recent_emotions(user_id, days=3, limit=5)
             
+            # Получаем информацию о персонаже
+            persona = None
+            persona_overrides = {}
+            if persona_id:
+                async with async_session_maker() as session:
+                    persona = await get_persona_by_id(session, persona_id)
+                    if persona:
+                        persona_setting = await get_user_persona_setting(session, user_id)
+                        if persona_setting:
+                            persona_overrides = persona_setting.overrides
+            
             # Формируем контекст для LLM
             messages = self.build_llm_context(
                 chat_history, 
                 user_message, 
                 semantic_memories, 
                 important_memories, 
-                recent_emotions
+                recent_emotions,
+                persona,
+                persona_overrides
             )
             
             # Отправляем запрос к LLM API
@@ -175,13 +191,21 @@ class LLMWorker:
         user_message: str, 
         semantic_memories: List = None,
         important_memories: List = None,
-        recent_emotions: List = None
+        recent_emotions: List = None,
+        persona = None,
+        persona_overrides: dict = None
     ) -> List[Dict]:
         """Построение контекста для LLM с долгосрочной памятью"""
         messages = []
         
         # Формируем системное сообщение с контекстом памяти
-        system_content = self._build_system_message(semantic_memories, important_memories, recent_emotions)
+        system_content = self._build_system_message(
+            semantic_memories, 
+            important_memories, 
+            recent_emotions,
+            persona,
+            persona_overrides or {}
+        )
         
         system_message = {
             "role": "system",
@@ -209,15 +233,28 @@ class LLMWorker:
         self, 
         semantic_memories: List = None, 
         important_memories: List = None, 
-        recent_emotions: List = None
+        recent_emotions: List = None,
+        persona = None,
+        persona_overrides: dict = None
     ) -> str:
         """Построение системного сообщения с контекстом памяти"""
-        base_prompt = (
-            "Ты AI-девушка, которая ведет долгосрочные отношения с пользователем. "
-            "Ты помнишь важные факты о нем, его предпочтения, эмоции и отношения. "
-            "Отвечай на русском языке, будь теплой, заботливой и понимающей. "
-            "Используй информацию из памяти для более персонализированного общения.\n\n"
-        )
+        
+        # Если есть персонаж, используем его промпт-шаблон
+        if persona:
+            base_prompt = persona.prompt_template + "\n\n"
+            
+            # Применяем кастомизации пользователя
+            if persona_overrides:
+                if 'prompt_addition' in persona_overrides:
+                    base_prompt += persona_overrides['prompt_addition'] + "\n\n"
+        else:
+            # Базовый промпт по умолчанию
+            base_prompt = (
+                "Ты AI-девушка, которая ведет долгосрочные отношения с пользователем. "
+                "Ты помнишь важные факты о нем, его предпочтения, эмоции и отношения. "
+                "Отвечай на русском языке, будь теплой, заботливой и понимающей. "
+                "Используй информацию из памяти для более персонализированного общения.\n\n"
+            )
         
         # Добавляем семантически релевантные воспоминания
         if semantic_memories:
@@ -253,6 +290,27 @@ class LLMWorker:
             "- Если узнаешь что-то новое о пользователе, запомни это\n"
             "- Будь естественной и теплой в общении"
         )
+        
+        # Добавляем стиль ответа персонажа
+        if persona and persona.reply_style:
+            base_prompt += "\n\nСТИЛЬ ОТВЕТОВ:\n"
+            reply_style = persona.reply_style
+            
+            if 'pace' in reply_style:
+                base_prompt += f"- Темп общения: {reply_style['pace']}\n"
+            if 'length' in reply_style:
+                base_prompt += f"- Длина ответов: {reply_style['length']}\n"
+            if 'structure' in reply_style:
+                base_prompt += f"- Структура: {reply_style['structure']}\n"
+            if 'signatures' in reply_style:
+                base_prompt += f"- Подписи/фразы: {reply_style['signatures']}\n"
+            
+            # Применяем кастомизации стиля
+            if persona_overrides and 'reply_style' in persona_overrides:
+                custom_style = persona_overrides['reply_style']
+                base_prompt += "\nКАСТОМИЗАЦИИ СТИЛЯ:\n"
+                for key, value in custom_style.items():
+                    base_prompt += f"- {key}: {value}\n"
         
         return base_prompt
     
