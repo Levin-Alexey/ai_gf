@@ -167,7 +167,11 @@ async def handle_chat_message(message: Message):
         
         # Получаем текущего персонажа пользователя
         async with async_session_maker() as session:
-            current_persona = await get_user_current_persona(session, user_id)
+            user = await get_user_by_telegram_id(session, telegram_id=user_id)
+            if user:
+                current_persona = await get_user_current_persona(session, user.id)
+            else:
+                current_persona = None
         
         # Отправляем сообщение в очередь для обработки LLM
         queue_message = {
