@@ -12,7 +12,11 @@ from memory_client import memory_client
 from models import MemoryType, MemoryImportance
 from config import LLM_API_URL, LLM_API_KEY, LLM_MODEL
 from database import async_session_maker
-from crud import get_persona_by_id, get_user_persona_setting
+from crud import (
+    get_persona_by_id,
+    get_user_persona_setting,
+    get_user_by_telegram_id
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,9 +145,16 @@ class LLMWorker:
                 async with async_session_maker() as session:
                     persona = await get_persona_by_id(session, persona_id)
                     if persona:
-                        persona_setting = await get_user_persona_setting(session, user_id)
-                        if persona_setting:
-                            persona_overrides = persona_setting.overrides
+                        # Получаем пользователя по telegram_id для получения внутреннего ID
+                        user = await get_user_by_telegram_id(
+                            session, telegram_id=user_id
+                        )
+                        if user:
+                            persona_setting = await get_user_persona_setting(
+                                session, user.id
+                            )
+                            if persona_setting:
+                                persona_overrides = persona_setting.overrides
             
             # Формируем контекст для LLM
             messages = self.build_llm_context(
