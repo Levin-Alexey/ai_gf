@@ -98,45 +98,60 @@ class LLMWorker:
     async def process_llm_request(self, message: Dict[str, Any]):
         """Асинхронная обработка запроса к LLM"""
         try:
-            user_id = message.get('user_id')
+            telegram_id = message.get('user_id')  # Это telegram_id!
             user_message = message.get('message')
             chat_id = message.get('chat_id')
             persona_id = message.get('persona_id')
             
-            logger.info(f"📨 Получен запрос от пользователя {user_id}: {user_message[:50]}...")
+            logger.info(f"📨 Получен запрос от пользователя {telegram_id}: {user_message[:50]}...")
             
-            if not all([user_id, user_message, chat_id]):
+            if not all([telegram_id, user_message, chat_id]):
                 logger.error("❌ Неполные данные в сообщении")
                 return
             
             # Проверяем типы
-            if not isinstance(user_id, int) or not isinstance(chat_id, int):
-                logger.error("❌ Некорректные типы user_id или chat_id")
+            if not isinstance(telegram_id, int) or not isinstance(chat_id, int):
+                logger.error("❌ Некорректные типы telegram_id или chat_id")
                 return
                 
             if not isinstance(user_message, str):
                 logger.error("❌ Некорректный тип user_message")
                 return
             
-            # Получаем историю чата из Redis
-            chat_history = await redis_client.get_chat_history(user_id)
+            # Получаем пользователя по telegram_id для получения внутреннего ID
+            async with async_session_maker() as session:
+                user = await get_user_by_telegram_id(
+                    session, telegram_id=telegram_id
+                )
+                
+                if not user:
+                    logger.error(f"❌ Пользователь с telegram_id {telegram_id} не найден")
+                    return
+                
+                # Используем внутренний ID пользователя для всех операций
+                internal_user_id = user.id
+            
+            # Получаем историю чата из Redis (используем telegram_id для Redis ключа)
+            chat_history = await redis_client.get_chat_history(telegram_id)
             
             # Получаем долгосрочную память пользователя через семантический поиск
             semantic_memories = await memory_client.search_semantic_memories(
-                user_id=user_id,
+                user_id=internal_user_id,  # Внутренний ID!
                 query=user_message,
                 limit=15
             )
             
             # Получаем также важные воспоминания
             important_memories = await memory_client.get_user_memories(
-                user_id, 
+                internal_user_id,  # Внутренний ID!
                 importance_min=MemoryImportance.HIGH,
                 limit=10
             )
             
             # Получаем недавние эмоции
-            recent_emotions = await memory_client.get_recent_emotions(user_id, days=3, limit=5)
+            recent_emotions = await memory_client.get_recent_emotions(
+                internal_user_id, days=3, limit=5  # Внутренний ID!
+            )
             
             # Получаем информацию о персонаже
             persona = None
@@ -145,16 +160,11 @@ class LLMWorker:
                 async with async_session_maker() as session:
                     persona = await get_persona_by_id(session, persona_id)
                     if persona:
-                        # Получаем пользователя по telegram_id для получения внутреннего ID
-                        user = await get_user_by_telegram_id(
-                            session, telegram_id=user_id
+                        persona_setting = await get_user_persona_setting(
+                            session, internal_user_id  # Внутренний ID!
                         )
-                        if user:
-                            persona_setting = await get_user_persona_setting(
-                                session, user.id
-                            )
-                            if persona_setting:
-                                persona_overrides = persona_setting.overrides
+                        if persona_setting:
+                            persona_overrides = persona_setting.overrides
             
             # Формируем контекст для LLM
             messages = self.build_llm_context(
@@ -168,26 +178,26 @@ class LLMWorker:
             )
             
             # Отправляем запрос к LLM API
-            logger.info(f"🤖 Отправляем запрос к LLM API для пользователя {user_id}")
+            logger.info(f"🤖 Отправляем запрос к LLM API для пользователя {telegram_id}")
             llm_response = await self.call_llm_api(messages)
             
             if llm_response:
-                logger.info(f"✅ Получен ответ от LLM для пользователя {user_id}")
+                logger.info(f"✅ Получен ответ от LLM для пользователя {telegram_id}")
                 
-                # Сохраняем сообщения в Redis
-                await redis_client.add_message(user_id, "user", user_message)
-                await redis_client.add_message(user_id, "assistant", llm_response)
-                logger.info(f"💾 Сообщения сохранены в Redis для пользователя {user_id}")
+                # Сохраняем сообщения в Redis (используем telegram_id для ключа)
+                await redis_client.add_message(telegram_id, "user", user_message)
+                await redis_client.add_message(telegram_id, "assistant", llm_response)
+                logger.info(f"💾 Сообщения сохранены в Redis для пользователя {telegram_id}")
                 
                 # Анализируем и сохраняем новую информацию в долгосрочную память
-                logger.info(f"🧠 Анализируем воспоминания для пользователя {user_id}")
-                await self._analyze_and_save_memories(user_id, user_message, llm_response)
+                logger.info(f"🧠 Анализируем воспоминания для пользователя {telegram_id}")
+                await self._analyze_and_save_memories(internal_user_id, user_message, llm_response)
                 
                 # Отправляем ответ обратно в бот
                 await self.send_response_to_bot(chat_id, llm_response)
-                logger.info(f"📤 Ответ отправлен пользователю {user_id}")
+                logger.info(f"📤 Ответ отправлен пользователю {telegram_id}")
             else:
-                logger.error(f"❌ Не удалось получить ответ от LLM для пользователя {user_id}")
+                logger.error(f"❌ Не удалось получить ответ от LLM для пользователя {telegram_id}")
                 # Отправляем сообщение об ошибке
                 error_message = ("Извините, произошла ошибка при обработке "
                                "вашего сообщения. Попробуйте еще раз.")
