@@ -5,9 +5,9 @@ After=network.target postgresql.service redis.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/AI_GF
-Environment="PATH=/root/AI_GF/venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/root/AI_GF/venv/bin/python webhook_server.py
+WorkingDirectory=/root/ai_gf
+Environment="PATH=/root/ai_gf/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/root/ai_gf/venv/bin/python webhook_server.py
 
 # Автоматический перезапуск при падении
 Restart=always
