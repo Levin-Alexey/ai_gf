@@ -14,7 +14,8 @@ from pydantic import BaseModel
 from database import async_session_maker
 from sqlalchemy import update, select
 from models import User
-from config import PAYMENT_SECRET_KEY
+from config import PAYMENT_SECRET_KEY, BOT_TOKEN, YOOKASSA_DISABLE_SIGNATURE_CHECK
+import aiohttp
 
 # Настройка логирования
 logging.basicConfig(
@@ -58,7 +59,7 @@ def verify_webhook_signature(body: bytes, signature: Optional[str]) -> bool:
     return hmac.compare_digest(signature, expected_signature)
 
 
-async def activate_subscription(telegram_id: int, days: int) -> bool:
+async def activate_subscription(telegram_id: int, days: int) -> Optional[datetime]:
     """
     Активировать подписку для пользователя
     
@@ -67,7 +68,7 @@ async def activate_subscription(telegram_id: int, days: int) -> bool:
         days: Количество дней подписки
     
     Returns:
-        True если успешно
+        Дата окончания подписки при успехе, иначе None
     """
     try:
         async with async_session_maker() as session:
@@ -79,10 +80,14 @@ async def activate_subscription(telegram_id: int, days: int) -> bool:
             
             if not user:
                 logger.error(f"Пользователь {telegram_id} не найден")
-                return False
+                return None
             
-            # Устанавливаем дату окончания подписки
-            expires_at = datetime.now(timezone.utc) + timedelta(days=days)
+            # Устанавливаем/продлеваем дату окончания подписки
+            now_utc = datetime.now(timezone.utc)
+            base = user.subscription_expires_at if (
+                user.subscription_expires_at and user.subscription_expires_at > now_utc
+            ) else now_utc
+            expires_at = base + timedelta(days=days)
             
             # Обновляем подписку
             stmt = (
@@ -94,14 +99,34 @@ async def activate_subscription(telegram_id: int, days: int) -> bool:
             await session.commit()
             
             logger.info(
-                f"✅ Подписка активирована для {telegram_id} "
+                f"✅ Подписка активирована/продлена для {telegram_id} "
                 f"на {days} дней до {expires_at}"
             )
-            return True
+            return expires_at
             
     except Exception as e:
         logger.error(f"Ошибка активации подписки: {e}")
-        return False
+        return None
+
+
+async def send_telegram_message(chat_id: int, text: str) -> None:
+    """Отправить сообщение пользователю в Telegram через Bot API."""
+    if not BOT_TOKEN:
+        logger.warning("BOT_TOKEN не задан, уведомление пользователю не отправлено")
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    timeout = aiohttp.ClientTimeout(total=10)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, json=payload) as resp:
+                if resp.status != 200:
+                    body = await resp.text()
+                    logger.warning(
+                        f"Не удалось отправить Telegram уведомление: {resp.status} {body}"
+                    )
+    except Exception as e:
+        logger.error(f"Ошибка отправки Telegram уведомления: {e}")
 
 
 @app.get("/")
@@ -134,10 +159,22 @@ async def yookassa_webhook(
         # Получаем тело запроса
         body = await request.body()
         
+        # Определяем подпись из разных возможных заголовков
+        signature = (
+            x_yookassa_signature
+            or request.headers.get("X-Yookassa-Signature")
+            or request.headers.get("X-Webhook-Signature")
+            or request.headers.get("Content-Signature")
+        )
+
         # Проверяем подпись (ВАЖНО для безопасности!)
-        if not verify_webhook_signature(body, x_yookassa_signature):
-            logger.warning("❌ Невалидная подпись webhook!")
-            raise HTTPException(status_code=400, detail="Invalid signature")
+        if not verify_webhook_signature(body, signature):
+            msg = "❌ Невалидная подпись webhook!"
+            if not YOOKASSA_DISABLE_SIGNATURE_CHECK:
+                logger.warning(msg)
+                raise HTTPException(status_code=400, detail="Invalid signature")
+            else:
+                logger.warning(msg + " Продолжаем по флагу YOOKASSA_DISABLE_SIGNATURE_CHECK=true")
         
         # Парсим JSON
         data = await request.json()
@@ -162,13 +199,24 @@ async def yookassa_webhook(
                 )
             
             # Активируем подписку
-            success = await activate_subscription(
+            expires_at = await activate_subscription(
                 int(telegram_id),
                 int(plan_days)
             )
             
-            if success:
+            if expires_at:
                 logger.info(f"✅ Платёж обработан для {telegram_id}")
+                # Уведомление пользователю в Telegram
+                try:
+                    until_str = expires_at.astimezone(timezone.utc).strftime('%d.%m.%Y')
+                    text = (
+                        "✅ Оплата получена!\n\n"
+                        f"Подписка активирована до <b>{until_str}</b>.\n"
+                        "Спасибо за поддержку! 💙"
+                    )
+                    await send_telegram_message(int(telegram_id), text)
+                except Exception as e:
+                    logger.error(f"Не удалось отправить подтверждение в Telegram: {e}")
                 return {"status": "success"}
             else:
                 logger.error(f"❌ Не удалось активировать подписку {telegram_id}")

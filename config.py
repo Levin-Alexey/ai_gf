@@ -56,3 +56,7 @@ WEBHOOK_URL = os.getenv('WEBHOOK_URL')  # URL вашего сервера для
 # Можно задать в .env: PAYMENT_RECEIPT_EMAIL=user@example.com или PAYMENT_RECEIPT_PHONE=+79991234567
 PAYMENT_RECEIPT_EMAIL = os.getenv('PAYMENT_RECEIPT_EMAIL', '')
 PAYMENT_RECEIPT_PHONE = os.getenv('PAYMENT_RECEIPT_PHONE', '')
+
+# Настройки безопасности webhook
+# Можно отключить проверку подписи ЮKassa (НЕ рекомендуется в проде)
+YOOKASSA_DISABLE_SIGNATURE_CHECK = os.getenv('YOOKASSA_DISABLE_SIGNATURE_CHECK', 'false').lower() in ('1', 'true', 'yes', 'y')
