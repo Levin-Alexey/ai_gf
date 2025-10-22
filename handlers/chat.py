@@ -4,7 +4,7 @@
 import logging
 import time
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -12,6 +12,7 @@ from database import async_session_maker
 from crud import get_user_by_telegram_id, get_user_current_persona
 from redis_client import redis_client
 from queue_client import queue_client
+from utils import check_message_limit
 from .menu import get_main_menu_keyboard
 
 router = Router()
@@ -165,13 +166,51 @@ async def handle_chat_message(message: Message):
             )
             return
         
-        # Получаем текущего персонажа пользователя
+        # Получаем пользователя и текущего персонажа
         async with async_session_maker() as session:
             user = await get_user_by_telegram_id(session, telegram_id=user_id)
-            if user:
-                current_persona = await get_user_current_persona(session, user.id)
-            else:
-                current_persona = None
+            if not user:
+                await message.answer(
+                    "⚠️ Сначала нужно пройти настройку. Напиши /start"
+                )
+                return
+            
+            # Проверяем лимит сообщений
+            can_send, messages_left = await check_message_limit(
+                redis_client, user
+            )
+            
+            if not can_send:
+                # Лимит исчерпан - показываем сообщение о подписке
+                await message.answer(
+                    "😔 Вы достигли дневного лимита (5 сообщений).\n\n"
+                    "💎 Оформите подписку для безлимитного общения с вашей AI-подругой!\n\n"
+                    "📊 Преимущества подписки:\n"
+                    "• Безлимитные сообщения\n"
+                    "• Доступ ко всем персонажам\n"
+                    "• Приоритетная поддержка",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                        InlineKeyboardButton(
+                            text="💳 Оформить подписку",
+                            callback_data="pay"
+                        )
+                    ]])
+                )
+                logger.info(
+                    f"Пользователь {user_id} достиг лимита сообщений"
+                )
+                return
+            
+            # Показываем предупреждение, если осталось мало сообщений
+            if 0 <= messages_left <= 2:
+                warning_text = (
+                    f"⚠️ Осталось сообщений сегодня: {messages_left}\n"
+                    "Оформите подписку для безлимитного общения! 💎"
+                )
+                await message.answer(warning_text)
+            
+            # Получаем текущего персонажа
+            current_persona = await get_user_current_persona(session, user.id)
         
         # Отправляем сообщение в очередь для обработки LLM
         queue_message = {

@@ -44,3 +44,9 @@ VECTOR_SIMILARITY_THRESHOLD = float(os.getenv('VECTOR_SIMILARITY_THRESHOLD', 0.7
 # Настройки для распределенной архитектуры
 WORKER_SERVER = os.getenv('WORKER_SERVER', 'localhost')  # IP сервера воркера
 BOT_SERVER = os.getenv('BOT_SERVER', 'localhost')        # IP сервера бота
+
+# ЮKassa (платежная система)
+PAYMENT_SHOP_ID = os.getenv('PAYMENT_SHOP_ID')
+PAYMENT_SECRET_KEY = os.getenv('PAYMENT_SECRET_KEY')
+PAYMENT_RETURN_URL = os.getenv('PAYMENT_RETURN_URL', 'https://t.me/AI_GF_bot')
+WEBHOOK_URL = os.getenv('WEBHOOK_URL')  # URL вашего сервера для webhook

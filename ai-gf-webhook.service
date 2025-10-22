@@ -1,0 +1,22 @@
+[Unit]
+Description=AI Girlfriend Bot - Webhook Server (YooKassa Payments)
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AI_GF
+Environment="PATH=/root/AI_GF/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/root/AI_GF/venv/bin/python webhook_server.py
+
+# Автоматический перезапуск при падении
+Restart=always
+RestartSec=10
+
+# Логирование
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-gf-webhook
+
+[Install]
+WantedBy=multi-user.target

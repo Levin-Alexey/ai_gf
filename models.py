@@ -110,6 +110,13 @@ class User(Base):
     )
     about: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Подписка
+    subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        default=None
+    )
+
     # Временные метки
     first_seen_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),

@@ -115,6 +115,14 @@ class RedisClient:
         except Exception as e:
             logger.error(f"Ошибка получения состояния чата: {e}")
             return False
+    
+    async def incr(self, key: str) -> int:
+        """Инкрементировать счётчик"""
+        return await self.redis.incr(key)
+    
+    async def expire(self, key: str, seconds: int) -> bool:
+        """Установить TTL для ключа"""
+        return await self.redis.expire(key, seconds)
 
 # Глобальный экземпляр Redis клиента
 redis_client = RedisClient()

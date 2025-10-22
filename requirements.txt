@@ -23,6 +23,14 @@ aio-pika==9.4.3
 # HTTP клиент для запросов к LLM API
 aiohttp==3.10.11
 
+# Платёжная система ЮKassa
+yookassa==3.3.0
+
+# FastAPI для webhook сервера
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+
 # Векторный поиск и эмбеддинги
 sentence-transformers>=2.2.0
 chromadb>=0.4.0
