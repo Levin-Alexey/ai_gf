@@ -46,10 +46,16 @@ async def show_main_menu(message: Message, user_name: str):
 @router.message(F.text == "💳 Оплата")
 async def handle_payment(message: Message):
     """Обработчик кнопки 'Оплата'"""
-    await message.answer(
-        "💳 Оплата и подписки\n\n"
-        "Функция в разработке... Скоро здесь будут тарифы! 💎"
-    )
+    # Показать актуальное меню подписки из payment
+    try:
+        from .payment import send_subscription_menu_message
+        await send_subscription_menu_message(message)
+    except Exception:
+        # fallback текст
+        await message.answer(
+            "💳 Оплата и подписки\n\n"
+            "Скоро здесь будут тарифы! 💎"
+        )
 
 
 def get_settings_keyboard():

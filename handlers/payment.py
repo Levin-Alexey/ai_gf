@@ -6,8 +6,10 @@ import uuid
 from datetime import datetime, timezone
 
 from aiogram import Router
+from aiogram.filters import Command
 from aiogram.types import (
     CallbackQuery,
+    Message,
     InlineKeyboardMarkup,
     InlineKeyboardButton
 )
@@ -23,12 +25,9 @@ Configuration.account_id = PAYMENT_SHOP_ID
 Configuration.secret_key = PAYMENT_SECRET_KEY
 
 
-@router.callback_query(lambda c: c.data == "pay")
-async def handle_pay_button(callback: CallbackQuery):
-    """Обработчик кнопки 'Оформить подписку'"""
-    await callback.answer()
-    
-    await callback.message.answer(
+async def send_subscription_menu_message(target: Message):
+    """Отправить меню подписки (1 месяц — 10₽)."""
+    await target.answer(
         "💎 <b>Подписка</b>\n\n"
         "С подпиской вы получите:\n"
         "• ♾️ Безлимитные сообщения\n"
@@ -49,9 +48,21 @@ async def handle_pay_button(callback: CallbackQuery):
         ])
     )
     
-    logger.info(
-        f"Пользователь {callback.from_user.id} открыл меню подписки"
-    )
+    logger.info("Показано меню подписки (1м/10₽)")
+
+
+@router.message(Command("pay"))
+async def cmd_pay(message: Message):
+    """Команда /pay — открыть меню подписки."""
+    await send_subscription_menu_message(message)
+
+
+@router.callback_query(lambda c: c.data == "pay")
+async def handle_pay_button(callback: CallbackQuery):
+    """Обработчик инлайн-кнопки 'Оформить подписку'."""
+    await callback.answer()
+    await send_subscription_menu_message(callback.message)
+    logger.info(f"Пользователь {callback.from_user.id} открыл меню подписки")
 
 
 @router.callback_query(lambda c: c.data.startswith("subscribe_"))
