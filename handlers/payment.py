@@ -107,6 +107,19 @@ async def handle_subscribe(callback: CallbackQuery):
                 "telegram_id": str(telegram_id),
                 "days": str(plan['days']),
                 "plan": period
+            },
+            # Фискальный чек для магазинов с подключённой кассой (54‑ФЗ)
+            "receipt": {
+                "items": [
+                    {
+                        "description": f"Подписка AI GF — {plan['name']}",
+                        "quantity": "1.00",
+                        "amount": {"value": amount_value, "currency": "RUB"},
+                        "vat_code": 1,  # 1 — без НДС
+                        "payment_subject": "service",
+                        "payment_mode": "full_payment"
+                    }
+                ]
             }
         }
 
