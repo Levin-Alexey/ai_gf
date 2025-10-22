@@ -4,6 +4,7 @@
 import logging
 import uuid
 from datetime import datetime, timezone
+from requests.exceptions import HTTPError
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -88,9 +89,12 @@ async def handle_subscribe(callback: CallbackQuery):
         # Создаём платёж в ЮKassa
         idempotence_key = str(uuid.uuid4())
         
-        payment = Payment.create({
+        # Формируем сумму в формате XX.XX (требование ЮKassa)
+        amount_value = f"{plan['price']:.2f}"
+
+        payment_payload = {
             "amount": {
-                "value": str(plan['price']),
+                "value": amount_value,
                 "currency": "RUB"
             },
             "confirmation": {
@@ -104,7 +108,14 @@ async def handle_subscribe(callback: CallbackQuery):
                 "days": str(plan['days']),
                 "plan": period
             }
-        }, idempotence_key)
+        }
+
+        logger.info(
+            "Создание платежа в ЮKassa: %s",
+            {k: (v if k != 'amount' else v) for k, v in payment_payload.items()}
+        )
+
+        payment = Payment.create(payment_payload, idempotence_key)
         
         # Получаем ссылку на оплату
         payment_url = payment.confirmation.confirmation_url
@@ -134,6 +145,26 @@ async def handle_subscribe(callback: CallbackQuery):
             f"ID={payment.id}, тариф={period}, сумма={plan['price']}₽"
         )
         
+    except HTTPError as e:
+        err_body = ""
+        try:
+            err_body = e.response.text
+        except Exception:
+            pass
+        logger.error(
+            f"ЮKassa HTTPError: {e} | body={err_body}",
+            exc_info=True
+        )
+        await callback.message.answer(
+            "❌ Платёж не создан (ошибка 400). Попробуйте ещё раз позже." \
+            "\nЕсли ошибка повторяется — напишите в поддержку.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="🏠 Вернуться в меню",
+                    callback_data="cancel_payment"
+                )
+            ]])
+        )
     except Exception as e:
         logger.error(f"Ошибка создания платежа: {e}", exc_info=True)
         await callback.message.answer(
