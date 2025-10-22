@@ -29,26 +29,18 @@ async def handle_pay_button(callback: CallbackQuery):
     await callback.answer()
     
     await callback.message.answer(
-        "💎 <b>Выберите срок подписки:</b>\n\n"
+        "💎 <b>Подписка</b>\n\n"
         "С подпиской вы получите:\n"
         "• ♾️ Безлимитные сообщения\n"
         "• 🎭 Доступ ко всем персонажам\n"
         "• ⚡ Быстрые ответы\n"
         "• 💬 Приоритетная поддержка\n\n"
-        "<i>Выберите подходящий тариф:</i>",
+        "<i>1 месяц доступа — всего 10₽</i>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(
-                text="📅 1 месяц — 299₽",
+                text="📅 1 месяц — 10₽",
                 callback_data="subscribe_1m"
-            )],
-            [InlineKeyboardButton(
-                text="📅 3 месяца — 699₽ (-22%)",
-                callback_data="subscribe_3m"
-            )],
-            [InlineKeyboardButton(
-                text="📅 1 год — 1999₽ (-44%)",
-                callback_data="subscribe_1y"
             )],
             [InlineKeyboardButton(
                 text="❌ Отмена",
@@ -71,9 +63,7 @@ async def handle_subscribe(callback: CallbackQuery):
     
     # Определяем параметры тарифа
     plans = {
-        "1m": {"name": "1 месяц", "price": 299, "days": 30},
-        "3m": {"name": "3 месяца", "price": 699, "days": 90},
-        "1y": {"name": "1 год", "price": 1999, "days": 365}
+        "1m": {"name": "1 месяц", "price": 10, "days": 30}
     }
     
     plan = plans.get(period)
