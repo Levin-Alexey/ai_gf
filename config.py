@@ -50,3 +50,9 @@ PAYMENT_SHOP_ID = os.getenv('PAYMENT_SHOP_ID')
 PAYMENT_SECRET_KEY = os.getenv('PAYMENT_SECRET_KEY')
 PAYMENT_RETURN_URL = os.getenv('PAYMENT_RETURN_URL', 'https://t.me/AI_GF_bot')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')  # URL вашего сервера для webhook
+
+# Реквизиты для чека (если включена фискализация в YooKassa)
+# Должен быть указан либо email, либо phone покупателя.
+# Можно задать в .env: PAYMENT_RECEIPT_EMAIL=user@example.com или PAYMENT_RECEIPT_PHONE=+79991234567
+PAYMENT_RECEIPT_EMAIL = os.getenv('PAYMENT_RECEIPT_EMAIL', '')
+PAYMENT_RECEIPT_PHONE = os.getenv('PAYMENT_RECEIPT_PHONE', '')

@@ -16,7 +16,13 @@ from aiogram.types import (
 )
 
 from yookassa import Configuration, Payment
-from config import PAYMENT_SHOP_ID, PAYMENT_SECRET_KEY, PAYMENT_RETURN_URL
+from config import (
+    PAYMENT_SHOP_ID,
+    PAYMENT_SECRET_KEY,
+    PAYMENT_RETURN_URL,
+    PAYMENT_RECEIPT_EMAIL,
+    PAYMENT_RECEIPT_PHONE,
+)
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -92,6 +98,18 @@ async def handle_subscribe(callback: CallbackQuery):
         # Формируем сумму в формате XX.XX (требование ЮKassa)
         amount_value = f"{plan['price']:.2f}"
 
+        # Подготовка блока receipt.customer
+        receipt_customer = {}
+        if PAYMENT_RECEIPT_EMAIL:
+            receipt_customer["email"] = PAYMENT_RECEIPT_EMAIL
+        if PAYMENT_RECEIPT_PHONE and "phone" not in receipt_customer:
+            # ЮKassa требует хотя бы одно поле: email или phone
+            receipt_customer["phone"] = PAYMENT_RECEIPT_PHONE
+
+        # Если ничего не задано в .env, используем безопасный дефолт email
+        if not receipt_customer:
+            receipt_customer["email"] = "billing@aigirlfriendbot.ru"
+
         payment_payload = {
             "amount": {
                 "value": amount_value,
@@ -119,7 +137,8 @@ async def handle_subscribe(callback: CallbackQuery):
                         "payment_subject": "service",
                         "payment_mode": "full_payment"
                     }
-                ]
+                ],
+                "customer": receipt_customer
             }
         }
 
