@@ -14,7 +14,11 @@ from pydantic import BaseModel
 from database import async_session_maker
 from sqlalchemy import update, select
 from models import User
-from config import PAYMENT_SECRET_KEY, BOT_TOKEN, YOOKASSA_DISABLE_SIGNATURE_CHECK
+from config import (
+    BOT_TOKEN,
+    YOOKASSA_DISABLE_SIGNATURE_CHECK,
+    YOOKASSA_WEBHOOK_SECRET,
+)
 import aiohttp
 
 # Настройка логирования
@@ -37,6 +41,10 @@ class YookassaNotification(BaseModel):
 def verify_webhook_signature(body: bytes, signature: Optional[str]) -> bool:
     """
     Проверка подписи webhook от ЮKassa
+
+    YooKassa использует отдельный секрет для вебхуков,
+    который настраивается в личном кабинете.
+    Мы используем YOOKASSA_WEBHOOK_SECRET.
     
     Args:
         body: Тело запроса в байтах
@@ -45,17 +53,17 @@ def verify_webhook_signature(body: bytes, signature: Optional[str]) -> bool:
     Returns:
         True если подпись валидна
     """
-    if not signature or not PAYMENT_SECRET_KEY:
-        logger.warning("Отсутствует подпись или секретный ключ")
+    secret = YOOKASSA_WEBHOOK_SECRET or ""
+    if not signature or not secret:
+        logger.warning("Отсутствует подпись или секретный ключ вебхука")
         return False
-    
-    # ЮKassa использует SHA-256 HMAC
+
     expected_signature = hmac.new(
-        PAYMENT_SECRET_KEY.encode('utf-8'),
+        secret.encode('utf-8'),
         body,
         hashlib.sha256
     ).hexdigest()
-    
+
     return hmac.compare_digest(signature, expected_signature)
 
 
@@ -172,9 +180,11 @@ async def yookassa_webhook(
             msg = "❌ Невалидная подпись webhook!"
             if not YOOKASSA_DISABLE_SIGNATURE_CHECK:
                 logger.warning(msg)
-                raise HTTPException(status_code=400, detail="Invalid signature")
+                return JSONResponse(status_code=400, content={"error": "Invalid signature"})
             else:
-                logger.warning(msg + " Продолжаем по флагу YOOKASSA_DISABLE_SIGNATURE_CHECK=true")
+                logger.warning(
+                    msg + " Продолжаем по флагу YOOKASSA_DISABLE_SIGNATURE_CHECK=true"
+                )
         
         # Парсим JSON
         data = await request.json()

@@ -50,6 +50,7 @@ PAYMENT_SHOP_ID = os.getenv('PAYMENT_SHOP_ID')
 PAYMENT_SECRET_KEY = os.getenv('PAYMENT_SECRET_KEY')
 PAYMENT_RETURN_URL = os.getenv('PAYMENT_RETURN_URL', 'https://t.me/AI_GF_bot')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')  # URL вашего сервера для webhook
+YOOKASSA_WEBHOOK_SECRET = os.getenv('YOOKASSA_WEBHOOK_SECRET', '')
 
 # Реквизиты для чека (если включена фискализация в YooKassa)
 # Должен быть указан либо email, либо phone покупателя.
@@ -59,4 +60,7 @@ PAYMENT_RECEIPT_PHONE = os.getenv('PAYMENT_RECEIPT_PHONE', '')
 
 # Настройки безопасности webhook
 # Можно отключить проверку подписи ЮKassa (НЕ рекомендуется в проде)
-YOOKASSA_DISABLE_SIGNATURE_CHECK = os.getenv('YOOKASSA_DISABLE_SIGNATURE_CHECK', 'false').lower() in ('1', 'true', 'yes', 'y')
+YOOKASSA_DISABLE_SIGNATURE_CHECK = (
+    os.getenv('YOOKASSA_DISABLE_SIGNATURE_CHECK', 'false')
+    .lower() in ('1', 'true', 'yes', 'y')
+)
