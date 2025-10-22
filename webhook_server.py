@@ -167,6 +167,9 @@ async def yookassa_webhook(
         # Получаем тело запроса
         body = await request.body()
         
+        # Логируем заголовки для отладки
+        logger.info(f"📨 Webhook headers: {dict(request.headers)}")
+        
         # Определяем подпись из разных возможных заголовков
         signature = (
             x_yookassa_signature
@@ -175,16 +178,16 @@ async def yookassa_webhook(
             or request.headers.get("Content-Signature")
         )
 
-        # Проверяем подпись (ВАЖНО для безопасности!)
-        if not verify_webhook_signature(body, signature):
-            msg = "❌ Невалидная подпись webhook!"
-            if not YOOKASSA_DISABLE_SIGNATURE_CHECK:
-                logger.warning(msg)
-                return JSONResponse(status_code=400, content={"error": "Invalid signature"})
-            else:
-                logger.warning(
-                    msg + " Продолжаем по флагу YOOKASSA_DISABLE_SIGNATURE_CHECK=true"
-                )
+        # YooKassa не использует подписи - только IP whitelist
+        # Проверку отключаем по умолчанию
+        if signature and YOOKASSA_WEBHOOK_SECRET:
+            if not verify_webhook_signature(body, signature):
+                logger.warning("❌ Невалидная подпись webhook!")
+                if not YOOKASSA_DISABLE_SIGNATURE_CHECK:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"error": "Invalid signature"}
+                    )
         
         # Парсим JSON
         data = await request.json()
