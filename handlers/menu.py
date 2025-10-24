@@ -63,7 +63,8 @@ def get_settings_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🎨 Настроить характер")],
-            [KeyboardButton(text="🤖 Настройки бота")],
+            # [KeyboardButton(text="🤖 Настройки бота")],  # Временно
+            # закомментировано
             [KeyboardButton(text="🔙 Назад в меню")],
         ],
         resize_keyboard=True,
@@ -75,7 +76,10 @@ def get_settings_keyboard():
 @router.message(F.text == "⚙️ Настройки")
 async def handle_settings(message: Message):
     """Обработчик кнопки 'Настройки'"""
-    logger.info(f"⚙️ Получено сообщение 'Настройки' от пользователя {message.from_user.id}")
+    logger.info(
+        f"⚙️ Получено сообщение 'Настройки' от пользователя "
+        f"{message.from_user.id}"
+    )
     async with async_session_maker() as session:
         user = await get_user_by_telegram_id(
             session,
@@ -96,18 +100,19 @@ async def handle_settings(message: Message):
             f"📝 О себе: {'Заполнено' if user.about else 'Не заполнено'}\n\n"
             f"Выбери, что хочешь настроить:"
         )
-        
+
         # Создаем обычную клавиатуру
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text="🎨 Настроить характер")],
-                [KeyboardButton(text="🤖 Настройки бота")],
+                # [KeyboardButton(text="🤖 Настройки бота")],  # Временно
+                # закомментировано
                 [KeyboardButton(text="🔙 Назад в меню")]
             ],
             resize_keyboard=True,
             one_time_keyboard=False
         )
-        
+
         await message.answer(
             settings_text,
             reply_markup=keyboard
@@ -132,28 +137,37 @@ async def handle_back_to_menu(message: Message):
 @router.message(F.text == "🎨 Настроить характер")
 async def handle_character_settings_button(message: Message):
     """Обработчик кнопки 'Настроить характер'"""
-    logger.info(f"🎨 Получено сообщение 'Настроить характер' от пользователя {message.from_user.id}")
-    
+    logger.info(
+        f"🎨 Получено сообщение 'Настроить характер' от пользователя "
+        f"{message.from_user.id}"
+    )
+
     # Импортируем функцию из character_settings
     from .character_settings import handle_character_settings
     await handle_character_settings(message)
 
 
-@router.message(F.text == "🤖 Настройки бота")
-async def handle_bot_settings_button(message: Message):
-    """Обработчик кнопки 'Настройки бота'"""
-    logger.info(f"🤖 Получено сообщение 'Настройки бота' от пользователя {message.from_user.id}")
-    
-    # Импортируем функцию из bot_settings
-    from .bot_settings import handle_bot_settings
-    await handle_bot_settings(message)
+# @router.message(F.text == "🤖 Настройки бота")
+# async def handle_bot_settings_button(message: Message):
+#     """Обработчик кнопки 'Настройки бота'"""
+#     logger.info(
+#         f"🤖 Получено сообщение 'Настройки бота' от пользователя "
+#         f"{message.from_user.id}"
+#     )
+#
+#     # Импортируем функцию из bot_settings
+#     from .bot_settings import handle_bot_settings
+#     await handle_bot_settings(message)
 
 
 @router.message(F.text == "🔙 Назад в меню")
 async def handle_back_to_main_button(message: Message):
     """Обработчик кнопки 'Назад в меню'"""
-    logger.info(f"🔙 Получено сообщение 'Назад в меню' от пользователя {message.from_user.id}")
-    
+    logger.info(
+        f"🔙 Получено сообщение 'Назад в меню' от пользователя "
+        f"{message.from_user.id}"
+    )
+
     # Показываем главное меню
     user_name = message.from_user.first_name or "друг"
     await show_main_menu(message, user_name)
