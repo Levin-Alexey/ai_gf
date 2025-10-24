@@ -16,14 +16,16 @@ from crud import (
     get_active_personas,
     get_user_current_persona,
     set_user_persona,
-    get_persona_by_id
+    get_persona_by_id,
+    update_user_tone
 )
+from models import GFTone
 
 router = Router()
 logger = logging.getLogger(__name__)
 
 
-@router.message(F.text == "🎨 Настроить характер")
+@router.message(F.text == "🤖 Настройки")
 async def handle_character_settings(message: Message):
     """Обработчик кнопки 'Настроить характер'"""
     logger.info(
@@ -114,6 +116,61 @@ async def _show_character_settings(message: Message, from_user=None):
     else:
         await message.answer(
             "⚠️ Сначала нужно пройти настройку. Напиши /start"
+        )
+
+
+async def show_tone_selection_for_settings(callback: CallbackQuery):
+    """Показать выбор тона общения в настройках"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="😊 Дружелюбный",
+                    callback_data="tone_settings:friendly"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💖 Нежный",
+                    callback_data="tone_settings:gentle"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="😎 Нейтральный",
+                    callback_data="tone_settings:neutral"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="😏 Саркастичный",
+                    callback_data="tone_settings:sarcastic"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🎩 Формальный",
+                    callback_data="tone_settings:formal"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔙 Назад к настройкам",
+                    callback_data="back_to_character_settings"
+                )
+            ]
+        ]
+    )
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            "🎨 Выбери новый тон общения:\n\n"
+            "😊 Дружелюбный — тёплый и позитивный\n"
+            "💖 Нежный — мягкий и заботливый\n"
+            "😎 Нейтральный — спокойный и сдержанный\n"
+            "😏 Саркастичный — с юмором и иронией\n"
+            "🎩 Формальный — вежливый и официальный",
+            reply_markup=keyboard
         )
 
 
@@ -217,7 +274,7 @@ async def handle_select_persona(message: Message):
 @router.callback_query(F.data == "select_persona")
 async def handle_select_persona_callback(callback: CallbackQuery):
     """Обработчик кнопки 'Выбрать личность'"""
-    if callback.message:
+    if callback.message and hasattr(callback.message, 'answer'):
         await handle_select_persona(callback.message)
     await callback.answer()
 
@@ -225,11 +282,64 @@ async def handle_select_persona_callback(callback: CallbackQuery):
 @router.callback_query(F.data == "change_tone")
 async def handle_change_tone_callback(callback: CallbackQuery):
     """Обработчик кнопки 'Изменить тон общения'"""
-    if callback.message:
-        await callback.message.answer(
-            "🎨 Изменение тона общения - функция в разработке!"
-        )
+    await show_tone_selection_for_settings(callback)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("tone_settings:"))
+async def process_tone_selection_for_settings(callback: CallbackQuery):
+    """Обработать выбор тона общения в настройках"""
+    if not callback.data:
+        return
+
+    tone_value = callback.data.split(":")[1]
+
+    # Словарь для перевода значений в enum
+    tone_map = {
+        'friendly': GFTone.FRIENDLY,
+        'gentle': GFTone.GENTLE,
+        'neutral': GFTone.NEUTRAL,
+        'sarcastic': GFTone.SARCASTIC,
+        'formal': GFTone.FORMAL,
+    }
+
+    selected_tone = tone_map.get(tone_value)
+
+    if selected_tone and callback.message:
+        # Сохраняем в базу данных
+        async with async_session_maker() as session:
+            await update_user_tone(
+                session,
+                telegram_id=callback.from_user.id,
+                tone=selected_tone
+            )
+            await session.commit()
+
+        logger.info(
+            f"Пользователь {callback.from_user.id} "
+            f"изменил тон на: {tone_value}"
+        )
+
+        # Показываем подтверждение и возвращаемся к настройкам
+        tone_names = {
+            'friendly': 'Дружелюбный',
+            'gentle': 'Нежный',
+            'neutral': 'Нейтральный',
+            'sarcastic': 'Саркастичный',
+            'formal': 'Формальный',
+        }
+
+        if hasattr(callback.message, 'edit_text'):
+            await callback.message.edit_text(
+                f"✅ Тон общения изменён на **{tone_names[tone_value]}**!\n\n"
+                f"Теперь я буду общаться с тобой в этом стиле. "
+                f"Можешь начать чат и почувствовать разницу! 💫",
+                parse_mode="Markdown"
+            )
+
+        await callback.answer("Тон общения изменён!")
+    else:
+        await callback.answer("Произошла ошибка, попробуй ещё раз")
 
 
 @router.callback_query(F.data == "my_interests")
@@ -306,7 +416,7 @@ async def handle_persona_selection_callback(callback: CallbackQuery):
         await session.commit()
 
         # Обновляем сообщение
-        if callback.message:
+        if callback.message and hasattr(callback.message, 'edit_text'):
             await callback.message.edit_text(
                 f"✅ Личность **{selected_persona.name}** выбрана!\n\n"
                 f"Теперь я буду общаться с тобой в образе "
@@ -326,7 +436,7 @@ async def handle_back_to_character_settings_callback(
     callback: CallbackQuery
 ):
     """Обработчик кнопки 'Назад к настройкам'"""
-    if callback.message:
+    if callback.message and hasattr(callback.message, 'delete'):
         await callback.message.delete()
         await handle_character_settings(callback.message)
     await callback.answer()
