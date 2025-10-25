@@ -117,6 +117,18 @@ async def add_user_interests(
         await session.flush()
 
 
+async def update_user_interests(
+    session: AsyncSession,
+    telegram_id: int,
+    interests: List[GFInterest],
+) -> None:
+    """Обновить интересы пользователя (полная замена)"""
+    user = await get_user_by_telegram_id(session, telegram_id)
+    if user:
+        user.interests = interests
+        await session.flush()
+
+
 async def add_user_goals(
     session: AsyncSession,
     telegram_id: int,

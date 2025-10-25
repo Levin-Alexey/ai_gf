@@ -17,9 +17,10 @@ from crud import (
     get_user_current_persona,
     set_user_persona,
     get_persona_by_id,
-    update_user_tone
+    update_user_tone,
+    update_user_interests
 )
-from models import GFTone
+from models import GFTone, GFInterest
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -170,6 +171,71 @@ async def show_tone_selection_for_settings(callback: CallbackQuery):
             "😎 Нейтральный — спокойный и сдержанный\n"
             "😏 Саркастичный — с юмором и иронией\n"
             "🎩 Формальный — вежливый и официальный",
+            reply_markup=keyboard
+        )
+
+
+async def show_interests_selection_for_settings(callback: CallbackQuery):
+    """Показать выбор интересов в настройках"""
+    # Получаем текущие интересы пользователя
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    current_interests = []
+    if user and user.interests:
+        # Преобразуем enum в строки для сравнения
+        current_interests = [interest.value for interest in user.interests]
+    # Все доступные интересы с эмодзи
+    interests_info = {
+        'work': ('💼', 'Работа'),
+        'startups': ('🚀', 'Стартапы'),
+        'sport': ('⚽', 'Спорт'),
+        'movies': ('🎬', 'Фильмы'),
+        'games': ('🎮', 'Игры'),
+        'music': ('🎵', 'Музыка'),
+        'travel': ('✈️', 'Путешествия'),
+        'self_growth': ('📈', 'Саморазвитие'),
+        'psychology': ('🧠', 'Психология'),
+        'ai_tech': ('🤖', 'AI и технологии'),
+        'books': ('📚', 'Книги'),
+    }
+
+    # Создаем кнопки
+    keyboard_buttons = []
+    for interest_key, (emoji, name) in interests_info.items():
+        # Если интерес выбран, добавляем галочку
+        check = "✅ " if interest_key in current_interests else ""
+        keyboard_buttons.append([
+            InlineKeyboardButton(
+                text=f"{check}{emoji} {name}",
+                callback_data=f"interest_settings:{interest_key}"
+            )
+        ])
+
+    # Добавляем кнопки управления
+    keyboard_buttons.append([
+        InlineKeyboardButton(
+            text="✨ Сохранить",
+            callback_data="interests_settings_done"
+        )
+    ])
+    keyboard_buttons.append([
+        InlineKeyboardButton(
+            text="🔙 Назад к настройкам",
+            callback_data="back_to_character_settings"
+        )
+    ])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            "🎯 Выбери свои интересы:\n\n"
+            "Можешь выбрать несколько вариантов.\n"
+            "Нажми на интерес, чтобы отметить или снять галочку.\n\n"
+            "Когда закончишь — нажми «Сохранить» ✨",
             reply_markup=keyboard
         )
 
@@ -345,11 +411,126 @@ async def process_tone_selection_for_settings(callback: CallbackQuery):
 @router.callback_query(F.data == "my_interests")
 async def handle_my_interests_callback(callback: CallbackQuery):
     """Обработчик кнопки 'Мои интересы'"""
-    if callback.message:
-        await callback.message.answer(
-            "🎯 Мои интересы - функция в разработке!"
-        )
+    await show_interests_selection_for_settings(callback)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("interest_settings:"))
+async def toggle_interest_for_settings(callback: CallbackQuery):
+    """Переключить выбор интереса в настройках"""
+    if not callback.data:
+        return
+
+    interest_value = callback.data.split(":")[1]
+
+    # Получаем текущие интересы пользователя
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    if not user:
+        await callback.answer("⚠️ Пользователь не найден", show_alert=True)
+        return
+
+    current_interests = []
+    if user.interests:
+        current_interests = [interest.value for interest in user.interests]
+
+    # Переключаем выбор
+    if interest_value in current_interests:
+        current_interests.remove(interest_value)
+    else:
+        current_interests.append(interest_value)
+
+    # Обновляем интересы пользователя
+    interest_map = {
+        'work': GFInterest.WORK,
+        'startups': GFInterest.STARTUPS,
+        'sport': GFInterest.SPORT,
+        'movies': GFInterest.MOVIES,
+        'games': GFInterest.GAMES,
+        'music': GFInterest.MUSIC,
+        'travel': GFInterest.TRAVEL,
+        'self_growth': GFInterest.SELF_GROWTH,
+        'psychology': GFInterest.PSYCHOLOGY,
+        'ai_tech': GFInterest.AI_TECH,
+        'books': GFInterest.BOOKS,
+    }
+
+    # Преобразуем в enum
+    interests_enums = [
+        interest_map[key] for key in current_interests if key in interest_map
+    ]
+
+    # Сохраняем изменения
+    async with async_session_maker() as session:
+        await update_user_interests(
+            session, callback.from_user.id, interests_enums
+        )
+        await session.commit()
+
+    # Обновляем клавиатуру
+    await show_interests_selection_for_settings(callback)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "interests_settings_done")
+async def save_interests_for_settings(callback: CallbackQuery):
+    """Сохранить выбранные интересы в настройках"""
+    # Получаем текущие интересы пользователя
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    if not user:
+        await callback.answer("⚠️ Пользователь не найден", show_alert=True)
+        return
+
+    # Формируем список выбранных интересов
+    interests_list = []
+    if user.interests:
+        interest_names = {
+            'work': 'Работа',
+            'startups': 'Стартапы',
+            'sport': 'Спорт',
+            'movies': 'Фильмы',
+            'games': 'Игры',
+            'music': 'Музыка',
+            'travel': 'Путешествия',
+            'self_growth': 'Саморазвитие',
+            'psychology': 'Психология',
+            'ai_tech': 'AI и технологии',
+            'books': 'Книги',
+        }
+
+        interests_list = [
+            interest_names.get(interest.value, interest.value)
+            for interest in user.interests
+        ]
+
+    if interests_list:
+        interests_text = "• " + "\n• ".join(interests_list)
+        message_text = (
+            f"✅ Интересы обновлены!\n\n"
+            f"📋 Твои интересы:\n{interests_text}\n\n"
+            f"Теперь я буду учитывать их в наших разговорах! 💫"
+        )
+    else:
+        message_text = (
+            "✅ Интересы обновлены!\n\n"
+            "📋 У тебя пока нет выбранных интересов.\n"
+            "Можешь добавить их позже в настройках! 💫"
+        )
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            message_text,
+            parse_mode="Markdown"
+        )
+
+    await callback.answer("Интересы сохранены!")
 
 
 @router.callback_query(F.data == "my_goals")
