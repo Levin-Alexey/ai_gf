@@ -37,7 +37,8 @@ def get_support_keyboard():
 async def handle_support_command(message: Message, state: FSMContext):
     """Обработчик команды /support"""
     logger.info(
-        f"🆘 SUPPORT: Получена команда /support от пользователя {message.from_user.id}"
+        f"🆘 SUPPORT: Получена команда /support от пользователя "
+        f"{message.from_user.id}"
     )
     logger.info(f"🆘 SUPPORT: Текст сообщения: '{message.text}'")
 
@@ -58,7 +59,10 @@ async def handle_support_command(message: Message, state: FSMContext):
 @router.message(F.text == "support")
 async def handle_support_text(message: Message, state: FSMContext):
     """Обработчик текста 'support'"""
-    logger.info(f"🆘 SUPPORT: Получен текст 'support' от пользователя {message.from_user.id}")
+    logger.info(
+        f"🆘 SUPPORT: Получен текст 'support' от пользователя "
+        f"{message.from_user.id}"
+    )
     await handle_support_command(message, state)
 
 
@@ -66,15 +70,19 @@ async def handle_support_text(message: Message, state: FSMContext):
 @router.message(F.text == "поддержка")
 async def handle_support_russian(message: Message, state: FSMContext):
     """Обработчик текста 'поддержка'"""
-    logger.info(f"🆘 SUPPORT: Получен текст 'поддержка' от пользователя {message.from_user.id}")
+    logger.info(
+        f"🆘 SUPPORT: Получен текст 'поддержка' от пользователя "
+        f"{message.from_user.id}"
+    )
     await handle_support_command(message, state)
 
 
 @router.message(F.text == "❌ Отменить")
 async def handle_cancel_support(message: Message, state: FSMContext):
     """Обработчик отмены поддержки"""
-    logger.info(f"Отмена поддержки от пользователя {message.from_user.id}")
-    
+    logger.info(
+        f"Отмена поддержки от пользователя {message.from_user.id}"
+    )
     await state.clear()
     await message.answer(
         "❌ Обращение в поддержку отменено.\n\n"
@@ -94,7 +102,17 @@ async def handle_support_message(message: Message, state: FSMContext):
         username = message.from_user.username or "Не указан"
         first_name = message.from_user.first_name or "Не указано"
         
-        logger.info(f"Получено сообщение в поддержку от пользователя {user_id}")
+        logger.info(
+            f"Получено сообщение в поддержку от пользователя {user_id}"
+        )
+        logger.info(f"🆘 SUPPORT: Текст сообщения: '{message.text}'")
+        logger.info(f"🆘 SUPPORT: Caption сообщения: '{message.caption}'")
+        
+        # Получаем текст сообщения
+        message_text = message.text or message.caption or "Медиа-сообщение"
+        logger.info(
+            f"🆘 SUPPORT: Итоговый текст для отправки: '{message_text}'"
+        )
         
         # Формируем сообщение для канала
         support_text = (
@@ -102,7 +120,7 @@ async def handle_support_message(message: Message, state: FSMContext):
             f"👤 Пользователь: {first_name}\n"
             f"🆔 ID: {user_id}\n"
             f"📝 Username: @{username}\n\n"
-            f"💬 Сообщение:\n{message.text or 'Медиа-сообщение'}"
+            f"💬 Сообщение:\n{message_text}"
         )
         
         # Отправляем в канал поддержки
@@ -135,7 +153,10 @@ async def send_to_support_channel(message: Message, support_text: str):
     bot = Bot(token=BOT_TOKEN)
     
     try:
-        logger.info(f"🆘 SUPPORT: Отправляем сообщение получателю {SUPPORT_RECIPIENT_ID}")
+        logger.info(
+            f"🆘 SUPPORT: Отправляем сообщение получателю "
+            f"{SUPPORT_RECIPIENT_ID}"
+        )
         
         # Если есть медиа (фото, документ, видео и т.д.)
         if message.photo:
@@ -177,10 +198,16 @@ async def send_to_support_channel(message: Message, support_text: str):
                 text=support_text
             )
         
-        logger.info(f"✅ SUPPORT: Сообщение успешно отправлено получателю {SUPPORT_RECIPIENT_ID}")
+        logger.info(
+            f"✅ SUPPORT: Сообщение успешно отправлено получателю "
+            f"{SUPPORT_RECIPIENT_ID}"
+        )
         
     except Exception as e:
-        logger.error(f"❌ SUPPORT: Ошибка отправки получателю {SUPPORT_RECIPIENT_ID}: {e}")
+        logger.error(
+            f"❌ SUPPORT: Ошибка отправки получателю "
+            f"{SUPPORT_RECIPIENT_ID}: {e}"
+        )
         logger.error(f"❌ SUPPORT: Тип ошибки: {type(e).__name__}")
         raise
     finally:
