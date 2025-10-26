@@ -33,7 +33,7 @@ def get_support_keyboard():
     return keyboard
 
 
-@router.message(F.text == "/support")
+@router.message(F.text.startswith("/support"))
 async def handle_support_command(message: Message, state: FSMContext):
     """Обработчик команды /support"""
     logger.info(
@@ -51,6 +51,20 @@ async def handle_support_command(message: Message, state: FSMContext):
 
     # Устанавливаем состояние ожидания сообщения
     await state.set_state(SupportStates.waiting_for_message)
+
+
+# Дополнительный обработчик для случая, если команда не сработала
+@router.message(F.text == "support")
+async def handle_support_text(message: Message, state: FSMContext):
+    """Обработчик текста 'support'"""
+    await handle_support_command(message, state)
+
+
+# Обработчик для русского текста "поддержка"
+@router.message(F.text == "поддержка")
+async def handle_support_russian(message: Message, state: FSMContext):
+    """Обработчик текста 'поддержка'"""
+    await handle_support_command(message, state)
 
 
 @router.message(F.text == "❌ Отменить")
