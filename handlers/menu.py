@@ -299,10 +299,22 @@ async def handle_eva_photos(message: Message):
     await message.answer(
         "👩 Эва\n\n"
         "Нежная и романтичная красавица 💕\n\n"
-        "Скоро здесь будут фотографии Эвы!\n"
-        "Функция в разработке... 🔧",
+        "Вот мои фотографии для тебя... 💕",
         reply_markup=get_photo_album_keyboard()
     )
+
+    # Список фотографий Эвы
+    eva_photos = [
+        "https://storage.imgbly.com/imgbly/7NLa1jKFx4.png",
+        "https://storage.imgbly.com/imgbly/1Jy8XffVp9.png",
+        "https://storage.imgbly.com/imgbly/DlkpWwfVjl.png",
+        "https://storage.imgbly.com/imgbly/3ZIbnMP6Ss.png",
+        "https://storage.imgbly.com/imgbly/BnEZ6olb3e.png",
+        "https://storage.imgbly.com/imgbly/q1Zlni2A6q.jpg"
+    ]
+
+    # Отправляем фотографии
+    await send_photos_to_user(message, eva_photos)
 
 
 @router.message(F.text == "👩 Лина")
