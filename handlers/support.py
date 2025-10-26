@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # ID канала поддержки (попробуем разные варианты)
 SUPPORT_CHANNEL_IDS = [
-    525944420,  # ID администратора (ваш ID)
+    6310922392,  # ID получателя поддержки
     "@AIGFSupport",  # Username пользователя поддержки
     -3271505267,  # Оригинальный ID
     -1003271505267,  # Полный ID канала
@@ -22,7 +22,7 @@ SUPPORT_CHANNEL_IDS = [
 ]
 
 # ID администратора для fallback
-ADMIN_TELEGRAM_ID = 525944420  # Ваш Telegram ID
+ADMIN_TELEGRAM_ID = 6310922392  # ID получателя поддержки
 
 
 class SupportStates(StatesGroup):
