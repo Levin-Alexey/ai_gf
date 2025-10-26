@@ -30,7 +30,7 @@ def is_profile_complete(user: User) -> bool:
 async def check_message_limit(
     redis,
     user: User,
-    daily_limit: int = 5
+    daily_limit: int = 10
 ) -> Tuple[bool, int]:
     """
     Проверить лимит сообщений для пользователя.
@@ -42,7 +42,7 @@ async def check_message_limit(
     Args:
         redis: Redis клиент (redis_client.py)
         user: Объект пользователя из БД
-        daily_limit: Дневной лимит сообщений (по умолчанию 5)
+        daily_limit: Дневной лимит сообщений (по умолчанию 10)
     
     Returns:
         Tuple[can_send, messages_left]:
