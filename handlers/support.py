@@ -14,14 +14,15 @@ logger = logging.getLogger(__name__)
 
 # ID канала поддержки (попробуем разные варианты)
 SUPPORT_CHANNEL_IDS = [
-    "@AIGFSupport",  # Username пользователя поддержки (приоритет)
+    525944420,  # ID администратора (ваш ID)
+    "@AIGFSupport",  # Username пользователя поддержки
     -3271505267,  # Оригинальный ID
     -1003271505267,  # Полный ID канала
     "@support_channel",  # Username канала (если есть)
 ]
 
 # ID администратора для fallback
-ADMIN_TELEGRAM_ID = "@AIGFSupport"  # Username пользователя поддержки
+ADMIN_TELEGRAM_ID = 525944420  # Ваш Telegram ID
 
 
 class SupportStates(StatesGroup):
@@ -202,6 +203,7 @@ async def send_to_support_channel(message: Message, support_text: str):
             # Пробуем отправить администратору как fallback
             try:
                 logger.info(f"🆘 SUPPORT: Отправляем сообщение администратору {ADMIN_TELEGRAM_ID}")
+                logger.info(f"🆘 SUPPORT: Тип ID: {type(ADMIN_TELEGRAM_ID)}")
                 await bot.send_message(
                     chat_id=ADMIN_TELEGRAM_ID,
                     text=f"🆘 FALLBACK SUPPORT\n\n{support_text}"
@@ -210,6 +212,7 @@ async def send_to_support_channel(message: Message, support_text: str):
                 success = True
             except Exception as e:
                 logger.error(f"❌ SUPPORT: Не удалось отправить администратору: {e}")
+                logger.error(f"❌ SUPPORT: Тип ошибки: {type(e).__name__}")
             
             if not success:
                 raise Exception("Все каналы поддержки недоступны")
