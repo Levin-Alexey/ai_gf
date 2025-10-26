@@ -144,6 +144,18 @@ async def add_user_goals(
         await session.flush()
 
 
+async def update_user_goals(
+    session: AsyncSession,
+    telegram_id: int,
+    goals: List[GFGoal],
+) -> None:
+    """Обновить цели пользователя (полная замена)"""
+    user = await get_user_by_telegram_id(session, telegram_id)
+    if user:
+        user.goals = goals
+        await session.flush()
+
+
 async def update_user_about(
     session: AsyncSession,
     telegram_id: int,

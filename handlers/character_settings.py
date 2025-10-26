@@ -18,9 +18,10 @@ from crud import (
     set_user_persona,
     get_persona_by_id,
     update_user_tone,
-    update_user_interests
+    update_user_interests,
+    update_user_goals
 )
-from models import GFTone, GFInterest
+from models import GFTone, GFInterest, GFGoal
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -235,6 +236,71 @@ async def show_interests_selection_for_settings(callback: CallbackQuery):
             "🎯 Выбери свои интересы:\n\n"
             "Можешь выбрать несколько вариантов.\n"
             "Нажми на интерес, чтобы отметить или снять галочку.\n\n"
+            "Когда закончишь — нажми «Сохранить» ✨",
+            reply_markup=keyboard
+        )
+
+
+async def show_goals_selection_for_settings(callback: CallbackQuery):
+    """Показать выбор целей в настройках"""
+    # Получаем текущие цели пользователя
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    current_goals = []
+    if user and user.goals:
+        # Преобразуем enum в строки для сравнения
+        current_goals = [goal.value for goal in user.goals]
+
+    # Все доступные цели с эмодзи
+    goals_info = {
+        'support': ('🤗', 'Поддержка'),
+        'motivation': ('💪', 'Мотивация'),
+        'chitchat': ('💬', 'Общение'),
+        'advice': ('💡', 'Советы'),
+        'learn_english': ('🇬🇧', 'Изучение английского'),
+        'project_ideas': ('🚀', 'Идеи для проектов'),
+        'brainstorm': ('🧠', 'Мозговой штурм'),
+        'stress_relief': ('😌', 'Снятие стресса'),
+        'accountability': ('✅', 'Ответственность'),
+        'daily_checkin': ('📅', 'Ежедневный чекин'),
+    }
+
+    # Создаем кнопки
+    keyboard_buttons = []
+    for goal_key, (emoji, name) in goals_info.items():
+        # Если цель выбрана, добавляем галочку
+        check = "✅ " if goal_key in current_goals else ""
+        keyboard_buttons.append([
+            InlineKeyboardButton(
+                text=f"{check}{emoji} {name}",
+                callback_data=f"goal_settings:{goal_key}"
+            )
+        ])
+
+    # Добавляем кнопки управления
+    keyboard_buttons.append([
+        InlineKeyboardButton(
+            text="✨ Сохранить",
+            callback_data="goals_settings_done"
+        )
+    ])
+    keyboard_buttons.append([
+        InlineKeyboardButton(
+            text="🔙 Назад к настройкам",
+            callback_data="back_to_character_settings"
+        )
+    ])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            "🎯 Для чего ты хочешь использовать бота?\n\n"
+            "Можешь выбрать несколько целей.\n"
+            "Нажми на цель, чтобы отметить или снять галочку.\n\n"
             "Когда закончишь — нажми «Сохранить» ✨",
             reply_markup=keyboard
         )
@@ -536,11 +602,124 @@ async def save_interests_for_settings(callback: CallbackQuery):
 @router.callback_query(F.data == "my_goals")
 async def handle_my_goals_callback(callback: CallbackQuery):
     """Обработчик кнопки 'Мои цели'"""
-    if callback.message:
-        await callback.message.answer(
-            "🎯 Мои цели - функция в разработке!"
-        )
+    await show_goals_selection_for_settings(callback)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("goal_settings:"))
+async def toggle_goal_for_settings(callback: CallbackQuery):
+    """Переключить выбор цели в настройках"""
+    if not callback.data:
+        return
+
+    goal_value = callback.data.split(":")[1]
+
+    # Получаем текущие цели пользователя
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    if not user:
+        await callback.answer("⚠️ Пользователь не найден", show_alert=True)
+        return
+
+    current_goals = []
+    if user.goals:
+        current_goals = [goal.value for goal in user.goals]
+
+    # Переключаем выбор
+    if goal_value in current_goals:
+        current_goals.remove(goal_value)
+    else:
+        current_goals.append(goal_value)
+
+    # Обновляем цели пользователя
+    goal_map = {
+        'support': GFGoal.SUPPORT,
+        'motivation': GFGoal.MOTIVATION,
+        'chitchat': GFGoal.CHITCHAT,
+        'advice': GFGoal.ADVICE,
+        'learn_english': GFGoal.LEARN_ENGLISH,
+        'project_ideas': GFGoal.PROJECT_IDEAS,
+        'brainstorm': GFGoal.BRAINSTORM,
+        'stress_relief': GFGoal.STRESS_RELIEF,
+        'accountability': GFGoal.ACCOUNTABILITY,
+        'daily_checkin': GFGoal.DAILY_CHECKIN,
+    }
+
+    # Преобразуем в enum
+    goals_enums = [
+        goal_map[key] for key in current_goals if key in goal_map
+    ]
+
+    # Сохраняем изменения
+    async with async_session_maker() as session:
+        await update_user_goals(
+            session, callback.from_user.id, goals_enums
+        )
+        await session.commit()
+
+    # Обновляем клавиатуру
+    await show_goals_selection_for_settings(callback)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "goals_settings_done")
+async def save_goals_for_settings(callback: CallbackQuery):
+    """Сохранить выбранные цели в настройках"""
+    # Получаем текущие цели пользователя
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    if not user:
+        await callback.answer("⚠️ Пользователь не найден", show_alert=True)
+        return
+
+    # Формируем список выбранных целей
+    goals_list = []
+    if user.goals:
+        goal_names = {
+            'support': 'Поддержка',
+            'motivation': 'Мотивация',
+            'chitchat': 'Общение',
+            'advice': 'Советы',
+            'learn_english': 'Изучение английского',
+            'project_ideas': 'Идеи для проектов',
+            'brainstorm': 'Мозговой штурм',
+            'stress_relief': 'Снятие стресса',
+            'accountability': 'Ответственность',
+            'daily_checkin': 'Ежедневный чекин',
+        }
+
+        goals_list = [
+            goal_names.get(goal.value, goal.value)
+            for goal in user.goals
+        ]
+
+    if goals_list:
+        goals_text = "• " + "\n• ".join(goals_list)
+        message_text = (
+            f"✅ Цели обновлены!\n\n"
+            f"🎯 Твои цели:\n{goals_text}\n\n"
+            f"Теперь я буду помогать тебе в этих направлениях! 💫"
+        )
+    else:
+        message_text = (
+            "✅ Цели обновлены!\n\n"
+            "🎯 У тебя пока нет выбранных целей.\n"
+            "Можешь добавить их позже в настройках! 💫"
+        )
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            message_text,
+            parse_mode="Markdown"
+        )
+
+    await callback.answer("Цели сохранены!")
 
 
 @router.callback_query(F.data == "about_me")
