@@ -13,7 +13,7 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 # ID получателя поддержки
-SUPPORT_RECIPIENT_ID = 6310922392
+SUPPORT_RECIPIENT_ID = 525944420
 
 
 class SupportStates(StatesGroup):
