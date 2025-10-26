@@ -363,10 +363,24 @@ async def handle_kira_photos(message: Message):
     await message.answer(
         "👩 Кира\n\n"
         "Умная и стильная интеллектуалка 🧠\n\n"
-        "Скоро здесь будут фотографии Киры!\n"
-        "Функция в разработке... 🔧",
+        "Вот мои фотографии для тебя... 💕",
         reply_markup=get_photo_album_keyboard()
     )
+
+    # Список фотографий Киры
+    kira_photos = [
+        "https://storage.imgbly.com/imgbly/6vd8OEA4R8.png",
+        "https://storage.imgbly.com/imgbly/mG6EdNHd6t.png",
+        "https://storage.imgbly.com/imgbly/mUF96a8NBz.jpg",
+        "https://storage.imgbly.com/imgbly/IfraukBSVO.jpg",
+        "https://storage.imgbly.com/imgbly/q2TBIHRw2r.png",
+        "https://storage.imgbly.com/imgbly/oU44ChD9EE.jpg",
+        "https://storage.imgbly.com/imgbly/2qtySqcH84.jpg",
+        "https://storage.imgbly.com/imgbly/DqK1fbR0Ld.jpg"
+    ]
+
+    # Отправляем фотографии
+    await send_photos_to_user(message, kira_photos)
 
 
 @router.message(F.text == "👩 Нейра")
