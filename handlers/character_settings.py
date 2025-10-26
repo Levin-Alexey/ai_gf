@@ -9,6 +9,8 @@ from aiogram.types import (
     InlineKeyboardButton,
     CallbackQuery
 )
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from database import async_session_maker
 from crud import (
@@ -19,12 +21,18 @@ from crud import (
     get_persona_by_id,
     update_user_tone,
     update_user_interests,
-    update_user_goals
+    update_user_goals,
+    update_user_about
 )
 from models import GFTone, GFInterest, GFGoal
 
 router = Router()
 logger = logging.getLogger(__name__)
+
+
+class CharacterSettingsStates(StatesGroup):
+    """Состояния настроек характера"""
+    editing_about = State()
 
 
 @router.message(F.text == "🤖 Настройки")
@@ -302,6 +310,64 @@ async def show_goals_selection_for_settings(callback: CallbackQuery):
             "Можешь выбрать несколько целей.\n"
             "Нажми на цель, чтобы отметить или снять галочку.\n\n"
             "Когда закончишь — нажми «Сохранить» ✨",
+            reply_markup=keyboard
+        )
+
+
+async def show_about_edit_for_settings(callback: CallbackQuery):
+    """Показать редактирование информации о себе в настройках"""
+    # Получаем текущую информацию о пользователе
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+    if not user:
+        await callback.answer("⚠️ Пользователь не найден", show_alert=True)
+        return
+
+    current_about = user.about or ""
+
+    # Создаем клавиатуру
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✏️ Редактировать",
+                    callback_data="edit_about_text"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🗑 Очистить",
+                    callback_data="clear_about_text"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔙 Назад к настройкам",
+                    callback_data="back_to_character_settings"
+                )
+            ]
+        ]
+    )
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        if current_about:
+            message_text = (
+                f"📝 Информация о себе:\n\n"
+                f"{current_about}\n\n"
+                f"Выбери действие:"
+            )
+        else:
+            message_text = (
+                "📝 Информация о себе:\n\n"
+                "Пока не заполнено.\n\n"
+                "Расскажи о себе, чтобы я могла лучше понимать тебя! 💫"
+            )
+
+        await callback.message.edit_text(
+            message_text,
             reply_markup=keyboard
         )
 
@@ -725,11 +791,91 @@ async def save_goals_for_settings(callback: CallbackQuery):
 @router.callback_query(F.data == "about_me")
 async def handle_about_me_callback(callback: CallbackQuery):
     """Обработчик кнопки 'О себе'"""
-    if callback.message:
-        await callback.message.answer(
-            "📝 О себе - функция в разработке!"
-        )
+    await show_about_edit_for_settings(callback)
     await callback.answer()
+
+
+@router.callback_query(F.data == "edit_about_text")
+async def handle_edit_about_text_callback(
+    callback: CallbackQuery, state: FSMContext
+):
+    """Обработчик кнопки 'Редактировать' информацию о себе"""
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            "✏️ Расскажи о себе:\n\n"
+            "Чем занимаешься? Что тебя вдохновляет?\n"
+            "Какие у тебя планы и мечты?\n\n"
+            "Просто напиши текстом, и я сохраню эту информацию! 💫"
+        )
+
+    # Устанавливаем состояние ожидания текста
+    await state.set_state(CharacterSettingsStates.editing_about)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "clear_about_text")
+async def handle_clear_about_text_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Очистить' информацию о себе"""
+    # Очищаем информацию о себе
+    async with async_session_maker() as session:
+        await update_user_about(session, callback.from_user.id, "")
+        await session.commit()
+
+    logger.info(
+        f"Пользователь {callback.from_user.id} очистил информацию о себе"
+    )
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            "🗑 Информация о себе очищена!\n\n"
+            "Если захочешь рассказать о себе снова, "
+            "можешь использовать кнопку «Редактировать» 💫"
+        )
+
+    await callback.answer("Информация очищена!")
+
+
+@router.message(CharacterSettingsStates.editing_about)
+async def save_about_for_settings(message: Message, state: FSMContext):
+    """Сохранить информацию о себе в настройках"""
+    about_text = message.text
+
+    if not about_text:
+        await message.answer(
+            "Пожалуйста, напиши текстом о себе 😊"
+        )
+        return
+
+    # Проверяем длину текста
+    if len(about_text) > 1000:
+        await message.answer(
+            "Текст слишком длинный! Пожалуйста, сократи до 1000 символов 😊"
+        )
+        return
+
+    # Сохраняем в базу данных
+    async with async_session_maker() as session:
+        await update_user_about(
+            session,
+            telegram_id=message.from_user.id,
+            about=about_text
+        )
+        await session.commit()
+
+    logger.info(
+        f"Пользователь {message.from_user.id} "
+        f"обновил информацию о себе ({len(about_text)} символов)"
+    )
+
+    # Завершаем состояние
+    await state.clear()
+
+    # Показываем подтверждение
+    await message.answer(
+        f"✅ Информация о себе обновлена!\n\n"
+        f"📝 Твоя информация:\n{about_text}\n\n"
+        f"Теперь я буду лучше понимать тебя! 💫"
+    )
 
 
 @router.callback_query(F.data == "back_to_settings")
