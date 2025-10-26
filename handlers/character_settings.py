@@ -374,11 +374,16 @@ async def show_about_edit_for_settings(callback: CallbackQuery):
 
 async def handle_select_persona(message: Message):
     """Функция для выбора личности"""
+    logger.info(f"Пользователь {message.from_user.id} запросил выбор личности")
+    
     async with async_session_maker() as session:
         # Получаем всех активных персонажей
         personas = await get_active_personas(session)
+        
+        logger.info(f"Найдено {len(personas)} активных персонажей")
 
         if not personas:
+            logger.warning("Нет активных персонажей в базе данных")
             await message.answer(
                 "👤 Выбор личности\n\n"
                 "К сожалению, пока нет доступных личностей. "
@@ -406,6 +411,7 @@ async def handle_select_persona(message: Message):
         # Отправляем каждую личность отдельным сообщением
         for persona in personas:
             emoji = persona_emojis.get(persona.name, '👤')
+            logger.info(f"Отправляем персонажа: {persona.name} (ID: {persona.id})")
 
             # Создаем кнопку для выбора этой личности
             keyboard = InlineKeyboardMarkup(
@@ -433,6 +439,7 @@ async def handle_select_persona(message: Message):
                         reply_markup=keyboard,
                         parse_mode="Markdown"
                     )
+                    logger.info(f"Отправлено фото для {persona.name}")
                 except Exception as e:
                     logger.warning(
                         f"Не удалось отправить изображение "
@@ -891,15 +898,23 @@ async def handle_back_to_settings_callback(callback: CallbackQuery):
 async def handle_persona_selection_callback(callback: CallbackQuery):
     """Обработчик выбора конкретной личности через callback"""
     if not callback.data:
+        logger.error("Получен пустой callback_data")
         return
 
-    persona_id = int(callback.data.split("_")[2])
+    try:
+        persona_id = int(callback.data.split("_")[2])
+        logger.info(f"Пользователь {callback.from_user.id} выбирает персонажа ID: {persona_id}")
+    except (ValueError, IndexError) as e:
+        logger.error(f"Ошибка парсинга persona_id из {callback.data}: {e}")
+        await callback.answer("❌ Ошибка данных", show_alert=True)
+        return
 
     async with async_session_maker() as session:
         # Получаем персонажа по ID
         selected_persona = await get_persona_by_id(session, persona_id)
 
         if not selected_persona:
+            logger.warning(f"Персонаж с ID {persona_id} не найден")
             await callback.answer(
                 "❌ Персонаж не найден", show_alert=True
             )
@@ -912,29 +927,45 @@ async def handle_persona_selection_callback(callback: CallbackQuery):
         )
 
         if not user:
+            logger.warning(f"Пользователь {callback.from_user.id} не найден")
             await callback.answer(
                 "⚠️ Сначала нужно пройти настройку", show_alert=True
             )
             return
 
-        # Устанавливаем персонажа для пользователя
-        await set_user_persona(session, user.id, selected_persona.id)
-        await session.commit()
-
-        # Обновляем сообщение
-        if callback.message and hasattr(callback.message, 'edit_text'):
-            await callback.message.edit_text(
-                f"✅ Личность **{selected_persona.name}** выбрана!\n\n"
-                f"Теперь я буду общаться с тобой в образе "
-                f"{selected_persona.name}.\n\n"
-                f"**{selected_persona.short_desc}**\n\n"
-                f"Можешь начать чат и почувствовать разницу! 💫",
-                parse_mode="Markdown"
+        try:
+            # Устанавливаем персонажа для пользователя
+            await set_user_persona(session, user.id, selected_persona.id)
+            await session.commit()
+            
+            logger.info(
+                f"Пользователь {callback.from_user.id} успешно выбрал "
+                f"персонажа {selected_persona.name}"
             )
 
-        await callback.answer(
-            f"Выбрана личность: {selected_persona.name}"
-        )
+            # Обновляем сообщение
+            if callback.message and hasattr(callback.message, 'edit_text'):
+                await callback.message.edit_text(
+                    f"✅ Личность **{selected_persona.name}** выбрана!\n\n"
+                    f"Теперь я буду общаться с тобой в образе "
+                    f"{selected_persona.name}.\n\n"
+                    f"**{selected_persona.short_desc}**\n\n"
+                    f"Можешь начать чат и почувствовать разницу! 💫",
+                    parse_mode="Markdown"
+                )
+
+            await callback.answer(
+                f"Выбрана личность: {selected_persona.name}"
+            )
+            
+        except Exception as e:
+            logger.error(
+                f"Ошибка при установке персонажа {selected_persona.name} "
+                f"для пользователя {callback.from_user.id}: {e}"
+            )
+            await callback.answer(
+                "❌ Произошла ошибка при выборе личности", show_alert=True
+            )
 
 
 @router.callback_query(F.data == "back_to_character_settings")
