@@ -37,8 +37,9 @@ def get_support_keyboard():
 async def handle_support_command(message: Message, state: FSMContext):
     """Обработчик команды /support"""
     logger.info(
-        f"Получена команда /support от пользователя {message.from_user.id}"
+        f"🆘 SUPPORT: Получена команда /support от пользователя {message.from_user.id}"
     )
+    logger.info(f"🆘 SUPPORT: Текст сообщения: '{message.text}'")
 
     await message.answer(
         "🆘 Служба поддержки\n\n"
@@ -57,6 +58,7 @@ async def handle_support_command(message: Message, state: FSMContext):
 @router.message(F.text == "support")
 async def handle_support_text(message: Message, state: FSMContext):
     """Обработчик текста 'support'"""
+    logger.info(f"🆘 SUPPORT: Получен текст 'support' от пользователя {message.from_user.id}")
     await handle_support_command(message, state)
 
 
@@ -64,6 +66,7 @@ async def handle_support_text(message: Message, state: FSMContext):
 @router.message(F.text == "поддержка")
 async def handle_support_russian(message: Message, state: FSMContext):
     """Обработчик текста 'поддержка'"""
+    logger.info(f"🆘 SUPPORT: Получен текст 'поддержка' от пользователя {message.from_user.id}")
     await handle_support_command(message, state)
 
 

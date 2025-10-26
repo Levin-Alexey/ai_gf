@@ -15,6 +15,7 @@ from .support import router as support_router
 
 # Главный роутер, объединяющий все обработчики
 main_router = Router()
+main_router.include_router(support_router)  # Поддержка в начале
 main_router.include_router(start_router)
 main_router.include_router(questionnaire_router)
 main_router.include_router(menu_router)
@@ -22,7 +23,6 @@ main_router.include_router(chat_router)
 main_router.include_router(character_settings_router)
 main_router.include_router(bot_settings_router)
 main_router.include_router(payment_router)
-main_router.include_router(support_router)
 main_router.include_router(messages_router)  # messages в конце (catch-all)
 
 __all__ = ['main_router']
