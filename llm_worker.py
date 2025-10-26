@@ -102,6 +102,7 @@ class LLMWorker:
             user_message = message.get('message')
             chat_id = message.get('chat_id')
             persona_id = message.get('persona_id')
+            thinking_message_id = message.get('thinking_message_id')
             
             logger.info(f"📨 Получен запрос от пользователя {telegram_id}: {user_message[:50]}...")
             
@@ -196,12 +197,28 @@ class LLMWorker:
                 # Отправляем ответ обратно в бот
                 await self.send_response_to_bot(chat_id, llm_response)
                 logger.info(f"📤 Ответ отправлен пользователю {telegram_id}")
+                
+                # Удаляем сообщение "Думаю над ответом..." если есть его ID
+                if thinking_message_id:
+                    try:
+                        await bot_integration.delete_message(chat_id, thinking_message_id)
+                        logger.info(f"🗑 Сообщение 'Думаю над ответом' удалено для пользователя {telegram_id}")
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка удаления сообщения 'Думаю над ответом' для пользователя {telegram_id}: {e}")
             else:
                 logger.error(f"❌ Не удалось получить ответ от LLM для пользователя {telegram_id}")
                 # Отправляем сообщение об ошибке
                 error_message = ("Извините, произошла ошибка при обработке "
                                "вашего сообщения. Попробуйте еще раз.")
                 await self.send_response_to_bot(chat_id, error_message)
+                
+                # Удаляем сообщение "Думаю над ответом..." даже при ошибке
+                if thinking_message_id:
+                    try:
+                        await bot_integration.delete_message(chat_id, thinking_message_id)
+                        logger.info(f"🗑 Сообщение 'Думаю над ответом' удалено после ошибки для пользователя {telegram_id}")
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка удаления сообщения 'Думаю над ответом' после ошибки для пользователя {telegram_id}: {e}")
                 
         except Exception as e:
             logger.error(f"Ошибка обработки запроса LLM: {e}")

@@ -212,22 +212,23 @@ async def handle_chat_message(message: Message):
             # Получаем текущего персонажа
             current_persona = await get_user_current_persona(session, user.id)
         
+        # Отправляем подтверждение пользователю и сохраняем ID сообщения
+        thinking_message = await message.answer(
+            "🤔 Думаю над ответом...",
+            reply_markup=get_chat_keyboard()
+        )
+        
         # Отправляем сообщение в очередь для обработки LLM
         queue_message = {
             "user_id": user_id,
             "chat_id": chat_id,
             "message": user_message,
             "timestamp": int(time.time()),
-            "persona_id": current_persona.id if current_persona else None
+            "persona_id": current_persona.id if current_persona else None,
+            "thinking_message_id": thinking_message.message_id
         }
         
         await queue_client.publish_message(queue_message)
-        
-        # Отправляем подтверждение пользователю
-        await message.answer(
-            "🤔 Думаю над ответом...",
-            reply_markup=get_chat_keyboard()
-        )
         
         if user_id:
             logger.info(f"Сообщение пользователя {user_id} отправлено в очередь")

@@ -44,6 +44,19 @@ class BotIntegration:
             logger.error(f"❌ Ошибка отправки сообщения пользователю {chat_id}: {e}")
             logger.error(f"🔍 Тип ошибки: {type(e).__name__}")
     
+    async def delete_message(self, chat_id: int, message_id: int):
+        """Удалить сообщение пользователя"""
+        try:
+            if self.bot:
+                logger.info(f"🗑 Удаляем сообщение {message_id} в чате {chat_id}")
+                await self.bot.delete_message(chat_id, message_id)
+                logger.info(f"✅ Сообщение {message_id} успешно удалено из чата {chat_id}")
+            else:
+                logger.error("❌ Бот не инициализирован для удаления сообщения")
+        except Exception as e:
+            logger.error(f"❌ Ошибка удаления сообщения {message_id} в чате {chat_id}: {e}")
+            logger.error(f"🔍 Тип ошибки: {type(e).__name__}")
+    
     async def close(self):
         """Закрытие соединения с ботом"""
         if self.bot:
