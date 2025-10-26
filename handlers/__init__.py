@@ -11,6 +11,7 @@ from .character_settings import router as character_settings_router
 from .bot_settings import router as bot_settings_router
 from .payment import router as payment_router
 from .messages import router as messages_router
+from .support import router as support_router
 
 # Главный роутер, объединяющий все обработчики
 main_router = Router()
@@ -21,6 +22,7 @@ main_router.include_router(chat_router)
 main_router.include_router(character_settings_router)
 main_router.include_router(bot_settings_router)
 main_router.include_router(payment_router)
+main_router.include_router(support_router)
 main_router.include_router(messages_router)  # messages в конце (catch-all)
 
 __all__ = ['main_router']
