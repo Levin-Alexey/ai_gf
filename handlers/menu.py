@@ -315,10 +315,21 @@ async def handle_lina_photos(message: Message):
     await message.answer(
         "👩 Лина\n\n"
         "Энергичная и веселая девушка ⚡\n\n"
-        "Скоро здесь будут фотографии Лины!\n"
-        "Функция в разработке... 🔧",
+        "Вот мои фотографии для тебя... 💕",
         reply_markup=get_photo_album_keyboard()
     )
+
+    # Список фотографий Лины
+    lina_photos = [
+        "https://storage.imgbly.com/imgbly/pntzM4WPG5.png",
+        "https://storage.imgbly.com/imgbly/7tjIeYwgxN.png",
+        "https://storage.imgbly.com/imgbly/SiuhCoWNm0.jpg",
+        "https://storage.imgbly.com/imgbly/VrUeAgY9w8.jpg",
+        "https://storage.imgbly.com/imgbly/Gzpn0H7n6H.jpg"
+    ]
+
+    # Отправляем фотографии
+    await send_photos_to_user(message, lina_photos)
 
 
 @router.message(F.text == "👩 Джуди")
