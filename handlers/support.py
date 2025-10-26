@@ -12,17 +12,8 @@ from aiogram import Bot
 router = Router()
 logger = logging.getLogger(__name__)
 
-# ID канала поддержки (попробуем разные варианты)
-SUPPORT_CHANNEL_IDS = [
-    6310922392,  # ID получателя поддержки
-    "@AIGFSupport",  # Username пользователя поддержки
-    -3271505267,  # Оригинальный ID
-    -1003271505267,  # Полный ID канала
-    "@support_channel",  # Username канала (если есть)
-]
-
-# ID администратора для fallback
-ADMIN_TELEGRAM_ID = 6310922392  # ID получателя поддержки
+# ID получателя поддержки
+SUPPORT_RECIPIENT_ID = 6310922392
 
 
 class SupportStates(StatesGroup):
@@ -140,82 +131,57 @@ async def handle_support_message(message: Message, state: FSMContext):
 
 
 async def send_to_support_channel(message: Message, support_text: str):
-    """Отправить сообщение в канал поддержки"""
+    """Отправить сообщение в поддержку"""
     bot = Bot(token=BOT_TOKEN)
-    success = False
     
     try:
-        # Пробуем отправить в каждый канал по очереди
-        for channel_id in SUPPORT_CHANNEL_IDS:
-            try:
-                logger.info(f"🆘 SUPPORT: Пробуем отправить в канал {channel_id}")
-                
-                # Если есть медиа (фото, документ, видео и т.д.)
-                if message.photo:
-                    await bot.send_photo(
-                        chat_id=channel_id,
-                        photo=message.photo[-1].file_id,
-                        caption=support_text
-                    )
-                elif message.document:
-                    await bot.send_document(
-                        chat_id=channel_id,
-                        document=message.document.file_id,
-                        caption=support_text
-                    )
-                elif message.video:
-                    await bot.send_video(
-                        chat_id=channel_id,
-                        video=message.video.file_id,
-                        caption=support_text
-                    )
-                elif message.voice:
-                    await bot.send_voice(
-                        chat_id=channel_id,
-                        voice=message.voice.file_id,
-                        caption=support_text
-                    )
-                elif message.video_note:
-                    await bot.send_video_note(
-                        chat_id=channel_id,
-                        video_note=message.video_note.file_id
-                    )
-                    await bot.send_message(
-                        chat_id=channel_id,
-                        text=support_text
-                    )
-                else:
-                    await bot.send_message(
-                        chat_id=channel_id,
-                        text=support_text
-                    )
-                
-                logger.info(f"✅ SUPPORT: Сообщение успешно отправлено в канал {channel_id}")
-                success = True
-                break
-                
-            except Exception as e:
-                logger.warning(f"❌ SUPPORT: Не удалось отправить в канал {channel_id}: {e}")
-                continue
+        logger.info(f"🆘 SUPPORT: Отправляем сообщение получателю {SUPPORT_RECIPIENT_ID}")
         
-        if not success:
-            logger.error("❌ SUPPORT: Не удалось отправить ни в один канал поддержки")
-            # Пробуем отправить администратору как fallback
-            try:
-                logger.info(f"🆘 SUPPORT: Отправляем сообщение администратору {ADMIN_TELEGRAM_ID}")
-                logger.info(f"🆘 SUPPORT: Тип ID: {type(ADMIN_TELEGRAM_ID)}")
-                await bot.send_message(
-                    chat_id=ADMIN_TELEGRAM_ID,
-                    text=f"🆘 FALLBACK SUPPORT\n\n{support_text}"
-                )
-                logger.info("✅ SUPPORT: Сообщение отправлено администратору")
-                success = True
-            except Exception as e:
-                logger.error(f"❌ SUPPORT: Не удалось отправить администратору: {e}")
-                logger.error(f"❌ SUPPORT: Тип ошибки: {type(e).__name__}")
-            
-            if not success:
-                raise Exception("Все каналы поддержки недоступны")
-            
+        # Если есть медиа (фото, документ, видео и т.д.)
+        if message.photo:
+            await bot.send_photo(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                photo=message.photo[-1].file_id,
+                caption=support_text
+            )
+        elif message.document:
+            await bot.send_document(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                document=message.document.file_id,
+                caption=support_text
+            )
+        elif message.video:
+            await bot.send_video(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                video=message.video.file_id,
+                caption=support_text
+            )
+        elif message.voice:
+            await bot.send_voice(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                voice=message.voice.file_id,
+                caption=support_text
+            )
+        elif message.video_note:
+            await bot.send_video_note(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                video_note=message.video_note.file_id
+            )
+            await bot.send_message(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                text=support_text
+            )
+        else:
+            await bot.send_message(
+                chat_id=SUPPORT_RECIPIENT_ID,
+                text=support_text
+            )
+        
+        logger.info(f"✅ SUPPORT: Сообщение успешно отправлено получателю {SUPPORT_RECIPIENT_ID}")
+        
+    except Exception as e:
+        logger.error(f"❌ SUPPORT: Ошибка отправки получателю {SUPPORT_RECIPIENT_ID}: {e}")
+        logger.error(f"❌ SUPPORT: Тип ошибки: {type(e).__name__}")
+        raise
     finally:
         await bot.session.close()
