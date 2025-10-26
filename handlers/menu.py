@@ -404,7 +404,22 @@ async def handle_neira_photos(message: Message):
     await message.answer(
         "👩 Нейра\n\n"
         "Мистическая и таинственная волшебница ✨\n\n"
-        "Скоро здесь будут фотографии Нейры!\n"
-        "Функция в разработке... 🔧",
+        "Вот мои фотографии для тебя... 💕",
         reply_markup=get_photo_album_keyboard()
     )
+
+    # Список фотографий Нейры
+    neira_photos = [
+        "https://storage.imgbly.com/imgbly/Hxrellaq4k.png",
+        "https://storage.imgbly.com/imgbly/tb8AZwx5Tb.jpg",
+        "https://storage.imgbly.com/imgbly/FfZIRiRDUg.png",
+        "https://storage.imgbly.com/imgbly/xDoXQwiDuH.png",
+        "https://storage.imgbly.com/imgbly/DLGEnraSQd.png",
+        "https://storage.imgbly.com/imgbly/ktZ5HQrxQm.png",
+        "https://storage.imgbly.com/imgbly/SBOLJgpSJC.jpg",
+        "https://storage.imgbly.com/imgbly/WrLfSLtJ0v.jpg",
+        "https://storage.imgbly.com/imgbly/PUEmSsB1HB.jpg"
+    ]
+
+    # Отправляем фотографии
+    await send_photos_to_user(message, neira_photos)
