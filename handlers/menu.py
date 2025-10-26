@@ -72,6 +72,42 @@ async def show_photo_album_personas(message: Message):
     )
 
 
+async def send_photos_to_user(message: Message, photo_urls: list):
+    """Отправить фотографии пользователю"""
+    try:
+        from aiogram import Bot
+        from config import BOT_TOKEN
+
+        bot = Bot(token=BOT_TOKEN)
+
+        for i, photo_url in enumerate(photo_urls, 1):
+            try:
+                await bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=photo_url,
+                    caption=f"📸 Фото {i}/{len(photo_urls)}"
+                )
+                logger.info(
+                    f"Отправлено фото {i} пользователю {message.from_user.id}"
+                )
+
+                # Небольшая задержка между фотографиями
+                import asyncio
+                await asyncio.sleep(0.5)
+
+            except Exception as e:
+                logger.error(f"Ошибка отправки фото {i}: {e}")
+                continue
+
+        await bot.session.close()
+
+    except Exception as e:
+        logger.error(f"Ошибка отправки фотографий: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при загрузке фотографий. Попробуйте позже."
+        )
+
+
 # Обработчик кнопки "Начать чат" перенесен в handlers/chat.py
 
 
@@ -295,10 +331,26 @@ async def handle_judy_photos(message: Message):
     await message.answer(
         "👩 Джуди\n\n"
         "Загадочная и соблазнительная красотка 🔥\n\n"
-        "Скоро здесь будут фотографии Джуди!\n"
-        "Функция в разработке... 🔧",
+        "Вот мои фотографии для тебя... 💕",
         reply_markup=get_photo_album_keyboard()
     )
+
+    # Список фотографий Джуди
+    judy_photos = [
+        "https://storage.imgbly.com/imgbly/YphomzgrdU.png",
+        "https://storage.imgbly.com/imgbly/4aWBeN9NMQ.png",
+        "https://storage.imgbly.com/imgbly/bR1SjuqnZ6.png",
+        "https://storage.imgbly.com/imgbly/JI5khthvWI.png",
+        "https://storage.imgbly.com/imgbly/qRPYud7xyy.png",
+        "https://storage.imgbly.com/imgbly/1BQiWXJ2To.png",
+        "https://storage.imgbly.com/imgbly/D8T6wty22T.jpg",
+        "https://storage.imgbly.com/imgbly/J1J2XyEcRv.jpg",
+        "https://storage.imgbly.com/imgbly/JMF3KfYrvv.jpg",
+        "https://storage.imgbly.com/imgbly/IrKp2Jxzwr.jpg"
+    ]
+
+    # Отправляем фотографии
+    await send_photos_to_user(message, judy_photos)
 
 
 @router.message(F.text == "👩 Кира")
