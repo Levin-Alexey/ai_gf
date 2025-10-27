@@ -7,7 +7,8 @@ from aiogram.types import (
     Message,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    CallbackQuery
+    CallbackQuery,
+    InaccessibleMessage
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -374,12 +375,14 @@ async def show_about_edit_for_settings(callback: CallbackQuery):
 
 async def handle_select_persona(message: Message):
     """Функция для выбора личности"""
-    logger.info(f"Пользователь {message.from_user.id} запросил выбор личности")
-    
+    logger.info(
+        f"Пользователь {message.from_user.id} запросил выбор личности"
+    )
+
     async with async_session_maker() as session:
         # Получаем всех активных персонажей
         personas = await get_active_personas(session)
-        
+
         logger.info(f"Найдено {len(personas)} активных персонажей")
 
         if not personas:
@@ -411,7 +414,9 @@ async def handle_select_persona(message: Message):
         # Отправляем каждую личность отдельным сообщением
         for persona in personas:
             emoji = persona_emojis.get(persona.name, '👤')
-            logger.info(f"Отправляем персонажа: {persona.name} (ID: {persona.id})")
+            logger.info(
+                f"Отправляем персонажа: {persona.name} (ID: {persona.id})"
+            )
 
             # Создаем кнопку для выбора этой личности
             keyboard = InlineKeyboardMarkup(
@@ -903,7 +908,10 @@ async def handle_persona_selection_callback(callback: CallbackQuery):
 
     try:
         persona_id = int(callback.data.split("_")[2])
-        logger.info(f"Пользователь {callback.from_user.id} выбирает персонажа ID: {persona_id}")
+        logger.info(
+            f"Пользователь {callback.from_user.id} выбирает "
+            f"персонажа ID: {persona_id}"
+        )
     except (ValueError, IndexError) as e:
         logger.error(f"Ошибка парсинга persona_id из {callback.data}: {e}")
         await callback.answer("❌ Ошибка данных", show_alert=True)
@@ -944,20 +952,62 @@ async def handle_persona_selection_callback(callback: CallbackQuery):
             )
 
             # Обновляем сообщение
-            if callback.message and hasattr(callback.message, 'edit_text'):
-                await callback.message.edit_text(
+            if callback.message and not isinstance(
+                callback.message, InaccessibleMessage
+            ):
+                success_text = (
                     f"✅ Личность **{selected_persona.name}** выбрана!\n\n"
                     f"Теперь я буду общаться с тобой в образе "
                     f"{selected_persona.name}.\n\n"
                     f"**{selected_persona.short_desc}**\n\n"
-                    f"Можешь начать чат и почувствовать разницу! 💫",
-                    parse_mode="Markdown"
+                    f"Можешь начать чат и почувствовать разницу! 💫"
                 )
+
+                # Проверяем тип сообщения
+                if (hasattr(callback.message, 'photo') and
+                        callback.message.photo):
+                    # Если это фото, используем edit_caption
+                    try:
+                        await callback.message.edit_caption(
+                            caption=success_text,
+                            parse_mode="Markdown"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Не удалось изменить caption: {e}"
+                        )
+                        # Если не получилось, удаляем и отправляем
+                        # новое сообщение
+                        try:
+                            await callback.message.delete()
+                        except Exception:
+                            pass
+                        await callback.message.answer(
+                            success_text,
+                            parse_mode="Markdown"
+                        )
+                elif hasattr(callback.message, 'edit_text'):
+                    # Если это текстовое сообщение, редактируем его
+                    await callback.message.edit_text(
+                        success_text,
+                        parse_mode="Markdown"
+                    )
+                else:
+                    # Если ничего не получилось, просто удаляем и
+                    # отправляем новое
+                    try:
+                        await callback.message.delete()
+                    except Exception:
+                        pass
+                    await callback.message.answer(
+                        success_text,
+                        parse_mode="Markdown"
+                    )
 
             await callback.answer(
                 f"Выбрана личность: {selected_persona.name}"
             )
-            
+
         except Exception as e:
             logger.error(
                 f"Ошибка при установке персонажа {selected_persona.name} "
