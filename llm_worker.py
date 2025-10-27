@@ -166,6 +166,18 @@ class LLMWorker:
                         )
                         if persona_setting:
                             persona_overrides = persona_setting.overrides
+            # Логируем загруженную персону для диагностики имени/версии
+            try:
+                logger.info(
+                    f"Persona loaded for telegram_id={telegram_id}: "
+                    f"persona_id={getattr(persona, 'id', None)}, "
+                    f"name={getattr(persona, 'name', None)}, "
+                    f"version={getattr(persona, 'version', None)}, "
+                    f"overrides_present={bool(persona_overrides)}"
+                )
+            except Exception:
+                # На случай ошибок в __repr__ или атрибутах
+                logger.info(f"Persona loaded for telegram_id={telegram_id}: persona present={persona is not None}")
             
             # Формируем контекст для LLM
             messages = self.build_llm_context(
