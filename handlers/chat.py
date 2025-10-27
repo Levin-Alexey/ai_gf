@@ -211,6 +211,13 @@ async def handle_chat_message(message: Message):
             
             # Получаем текущего персонажа
             current_persona = await get_user_current_persona(session, user.id)
+            
+            # Логируем для диагностики
+            logger.info(
+                f"📋 Current persona for user {user_id}: "
+                f"persona_id={current_persona.id if current_persona else None}, "
+                f"name={current_persona.name if current_persona else 'None'}"
+            )
         
         # Отправляем подтверждение пользователю и сохраняем ID сообщения
         thinking_message = await message.answer(
@@ -227,6 +234,12 @@ async def handle_chat_message(message: Message):
             "persona_id": current_persona.id if current_persona else None,
             "thinking_message_id": thinking_message.message_id
         }
+        
+        # Логируем отправку в очередь
+        logger.info(
+            f"📤 Sending to queue for user {user_id}: "
+            f"persona_id={queue_message['persona_id']}"
+        )
         
         await queue_client.publish_message(queue_message)
         
