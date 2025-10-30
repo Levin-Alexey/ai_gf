@@ -166,6 +166,7 @@ class LLMWorker:
                         )
                         if persona_setting:
                             persona_overrides = persona_setting.overrides
+                            logger.info(f"📋 Persona overrides loaded: {persona_overrides}")
             # Логируем загруженную персону для диагностики имени/версии
             try:
                 logger.info(
@@ -404,10 +405,13 @@ class LLMWorker:
         # Добавляем инструкции по уровню флирта
         if persona_overrides:
             flirt_level = persona_overrides.get('flirt_level', 'moderate')
+            logger.info(f"🎯 Flirt level from overrides: {flirt_level}")
         else:
             flirt_level = 'moderate'
+            logger.info(f"🎯 Flirt level default: {flirt_level}")
 
         if flirt_level == 'minimal':
+            logger.info("🎯 Applying MINIMAL flirt level")
             base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
             base_prompt += (
                 "Ограничь флирт и соблазнение до минимума. Будь "
@@ -417,6 +421,7 @@ class LLMWorker:
                 "избегай романтичных намёков.\n"
             )
         elif flirt_level == 'intense':
+            logger.info("🎯 Applying INTENSE flirt level")
             base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
             base_prompt += (
                 "Активно флиртуй и кокетничай! Будь игривой, "
