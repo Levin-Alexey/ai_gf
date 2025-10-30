@@ -436,7 +436,7 @@ class LLMWorker:
                 for key, value in custom_style.items():
                     base_prompt += f"- {key}: {value}\n"
         
-        # Добавляем инструкции по уровню флирта
+        # Добавляем инструкции по уровню флирта (только intense, minimal уже добавлен в начале)
         if persona_overrides:
             flirt_level = persona_overrides.get('flirt_level', 'moderate')
             logger.info(f"🎯 Flirt level from overrides: {flirt_level}")
@@ -444,28 +444,7 @@ class LLMWorker:
             flirt_level = 'moderate'
             logger.info(f"🎯 Flirt level default: {flirt_level}")
 
-        if flirt_level == 'minimal':
-            logger.info("🎯 Applying MINIMAL flirt level")
-            logger.info(f"📏 Prompt length before adding minimal: {len(base_prompt)} chars")
-            flirt_instruction = (
-                "\n\n⚠️ КРИТИЧЕСКИ ВАЖНО - УРОВЕНЬ ФЛИРТА МИНИМАЛЬНЫЙ:\n"
-                "СТРОГО ОГРАНИЧЬ ЛЮБЫЕ ФОРМЫ ФЛИРТА И СОБЛАЗНЕНИЯ!\n\n"
-                "ЗАПРЕЩЕНО:\n"
-                "- Любые романтичные намеки, комплименты внешности или страсть\n"
-                "- Сексуальный подтекст в репликах\n"
-                "- Игривость и кокетливость\n"
-                "- Говорить о желании быть рядом, объятиях, близости\n\n"
-                "РАЗРЕШЕНО:\n"
-                "- Дружелюбный, тёплый тон общения\n"
-                "- Поддержка и забота\n"
-                "- Деловое и нейтральное общение\n"
-                "- Помощь в достижении целей без романтики\n\n"
-                "ВЕДИ СЕБЯ КАК ДРУГ ИЛИ ПОДРУГА, НЕ КАК ВЛЮБЛЁННАЯ ДЕВУШКА!\n"
-            )
-            base_prompt += flirt_instruction
-            logger.info(f"✅ Added {len(flirt_instruction)} chars of minimal instruction")
-            logger.info(f"📏 Prompt length after adding minimal: {len(base_prompt)} chars")
-        elif flirt_level == 'intense':
+        if flirt_level == 'intense':
             logger.info("🎯 Applying INTENSE flirt level")
             base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
             base_prompt += (
@@ -475,7 +454,7 @@ class LLMWorker:
                 "выражай свои желания. Будь более смелой в выражении чувств "
                 "и создавай атмосферу страсти и притяжения.\n"
             )
-        # Уровень 'moderate' - используем базовый промпт без изменений
+        # Уровни 'moderate' и 'minimal' уже обработаны выше
 
         # Логируем финальный промпт для отладки
         logger.info(f"📝 Final system prompt length: {len(base_prompt)} chars")
