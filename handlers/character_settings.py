@@ -23,7 +23,9 @@ from crud import (
     update_user_tone,
     update_user_interests,
     update_user_goals,
-    update_user_about
+    update_user_about,
+    update_flirt_level,
+    get_user_persona_setting
 )
 from models import GFTone, GFInterest, GFGoal
 
@@ -63,6 +65,24 @@ async def _show_character_settings(message: Message, from_user=None):
             current_persona = await get_user_current_persona(
                 session, user.id
             )
+        
+        # Получаем уровень флирта
+        async with async_session_maker() as session:
+            persona_setting = await get_user_persona_setting(session, user.id)
+
+        flirt_level = (
+            persona_setting.overrides.get('flirt_level', 'moderate')
+            if persona_setting and persona_setting.overrides
+            else 'moderate'
+        )
+
+        # Названия уровней флирта
+        flirt_level_names = {
+            'minimal': 'Минимальный',
+            'moderate': 'Умеренный',
+            'intense': 'Интенсивный'
+        }
+        flirt_level_text = flirt_level_names.get(flirt_level, 'Умеренный')
 
         # Формируем информацию о текущих настройках характера
         tone_text = user.tone.value if user.tone else "Не установлен"
@@ -75,6 +95,7 @@ async def _show_character_settings(message: Message, from_user=None):
         character_text = (
             f"🎨 Настройки характера:\n\n"
             f"👤 Личность: {persona_text}\n"
+            f"💕 Уровень флирта: {flirt_level_text}\n"
             f"🎨 Тон общения: {tone_text}\n"
             f"🎯 Интересов: {interests_count}\n"
             f"🎯 Целей: {goals_count}\n"
@@ -89,6 +110,12 @@ async def _show_character_settings(message: Message, from_user=None):
                     InlineKeyboardButton(
                         text="👤 Выбрать личность",
                         callback_data="select_persona"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="💕 Уровень флирта",
+                        callback_data="change_flirt_level"
                     )
                 ],
                 [
@@ -181,6 +208,70 @@ async def show_tone_selection_for_settings(callback: CallbackQuery):
             "😎 Нейтральный — спокойный и сдержанный\n"
             "😏 Саркастичный — с юмором и иронией\n"
             "🎩 Формальный — вежливый и официальный",
+            reply_markup=keyboard
+        )
+
+
+async def show_flirt_level_selection_for_settings(
+    callback: CallbackQuery
+):
+    """Показать выбор уровня флирта в настройках"""
+    # Получаем текущий уровень флирта
+    async with async_session_maker() as session:
+        persona_setting = await get_user_persona_setting(
+            session, user_id=callback.from_user.id
+        )
+
+    current_flirt_level = 'moderate'
+    if persona_setting and persona_setting.overrides:
+        current_flirt_level = persona_setting.overrides.get(
+            'flirt_level', 'moderate'
+        )
+
+    # Названия уровней флирта
+    flirt_level_info = {
+        'minimal': (
+            '😊', 'Минимальный',
+            'Лёгкий флирт, дружелюбный тон без интенсивных намеков'
+        ),
+        'moderate': (
+            '💕', 'Умеренный',
+            'Баланс между дружелюбием и романтикой (как сейчас)'
+        ),
+        'intense': (
+            '💋', 'Интенсивный',
+            'Активный флирт, игривость и романтичные намеки'
+        )
+    }
+
+    # Создаем кнопки
+    keyboard_buttons = []
+    for level_key, (emoji, name, desc) in flirt_level_info.items():
+        # Если уровень выбран, добавляем галочку
+        check = "✅ " if level_key == current_flirt_level else ""
+        keyboard_buttons.append([
+            InlineKeyboardButton(
+                text=f"{check}{emoji} {name}",
+                callback_data=f"flirt_level_settings:{level_key}"
+            )
+        ])
+
+    # Добавляем кнопку управления
+    keyboard_buttons.append([
+        InlineKeyboardButton(
+            text="🔙 Назад к настройкам",
+            callback_data="back_to_character_settings"
+        )
+    ])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+
+    if callback.message and hasattr(callback.message, 'edit_text'):
+        await callback.message.edit_text(
+            "💕 Выбери уровень флирта:\n\n"
+            "😊 Минимальный — лёгкий флирт, дружелюбный тон\n"
+            "💕 Умеренный — баланс между дружелюбием и романтикой\n"
+            "💋 Интенсивный — активный флирт, игривость и намеки",
             reply_markup=keyboard
         )
 
@@ -1016,6 +1107,80 @@ async def handle_persona_selection_callback(callback: CallbackQuery):
             await callback.answer(
                 "❌ Произошла ошибка при выборе личности", show_alert=True
             )
+
+
+@router.callback_query(F.data == "change_flirt_level")
+async def handle_change_flirt_level_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Изменить уровень флирта'"""
+    await show_flirt_level_selection_for_settings(callback)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("flirt_level_settings:"))
+async def process_flirt_level_selection_for_settings(
+    callback: CallbackQuery
+):
+    """Обработать выбор уровня флирта в настройках"""
+    if not callback.data:
+        return
+
+    flirt_level = callback.data.split(":")[1]
+
+    # Проверяем корректность уровня
+    if flirt_level not in ['minimal', 'moderate', 'intense']:
+        await callback.answer(
+            "Ошибка: неверный уровень флирта", show_alert=True
+        )
+        return
+
+    if callback.message:
+        # Получаем пользователя
+        async with async_session_maker() as session:
+            user = await get_user_by_telegram_id(
+                session,
+                telegram_id=callback.from_user.id
+            )
+
+        if not user:
+            await callback.answer(
+                "⚠️ Пользователь не найден", show_alert=True
+            )
+            return
+
+        # Сохраняем в базу данных
+        async with async_session_maker() as session:
+            await update_flirt_level(session, user.id, flirt_level)
+            await session.commit()
+
+        logger.info(
+            f"Пользователь {callback.from_user.id} "
+            f"изменил уровень флирта на: {flirt_level}"
+        )
+
+        # Названия уровней для отображения
+        flirt_level_names = {
+            'minimal': 'Минимальный',
+            'moderate': 'Умеренный',
+            'intense': 'Интенсивный'
+        }
+
+        flirt_level_emoji = {
+            'minimal': '😊',
+            'moderate': '💕',
+            'intense': '💋'
+        }
+
+        # Показываем подтверждение
+        if hasattr(callback.message, 'edit_text'):
+            await callback.message.edit_text(
+                f"{flirt_level_emoji[flirt_level]} Уровень флирта "
+                f"изменён на **{flirt_level_names[flirt_level]}**!\n\n"
+                f"Теперь я буду общаться с тобой на этом уровне. "
+                f"Можешь начать чат и почувствовать разницу! 💫",
+                parse_mode="Markdown"
+            )
+
+        await callback.answer("Уровень флирта изменён!")
 
 
 @router.callback_query(F.data == "back_to_character_settings")

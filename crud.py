@@ -197,7 +197,9 @@ async def get_active_personas(session: AsyncSession) -> List[Persona]:
     return list(result.scalars().all())
 
 
-async def get_persona_by_key(session: AsyncSession, key: str) -> Optional[Persona]:
+async def get_persona_by_key(
+    session: AsyncSession, key: str
+) -> Optional[Persona]:
     """Получить персонажа по ключу"""
     result = await session.execute(
         select(Persona).where(
@@ -291,3 +293,25 @@ async def update_persona_overrides(
         )
         .values(overrides=overrides)
     )
+
+
+async def update_flirt_level(
+    session: AsyncSession,
+    user_id: int,
+    flirt_level: str
+) -> None:
+    """Обновить уровень флирта для текущего персонажа пользователя"""
+    # Получаем текущие настройки персонажа
+    persona_setting = await get_user_persona_setting(session, user_id)
+
+    if persona_setting:
+        # Получаем текущие overrides или создаем новый словарь
+        current_overrides = persona_setting.overrides or {}
+
+        # Обновляем уровень флирта
+        current_overrides['flirt_level'] = flirt_level
+
+        # Сохраняем через update_persona_overrides
+        await update_persona_overrides(
+            session, user_id, current_overrides
+        )

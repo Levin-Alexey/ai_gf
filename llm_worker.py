@@ -401,6 +401,32 @@ class LLMWorker:
                 for key, value in custom_style.items():
                     base_prompt += f"- {key}: {value}\n"
         
+        # Добавляем инструкции по уровню флирта
+        if persona_overrides:
+            flirt_level = persona_overrides.get('flirt_level', 'moderate')
+        else:
+            flirt_level = 'moderate'
+
+        if flirt_level == 'minimal':
+            base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
+            base_prompt += (
+                "Ограничь флирт и соблазнение до минимума. Будь "
+                "дружелюбной и тёплой, но без страстных намеков и "
+                "интенсивного кокетства. Используй комплименты редко и "
+                "умеренно. Оставайся при этом приятной и заботливой, но "
+                "избегай романтичных намёков.\n"
+            )
+        elif flirt_level == 'intense':
+            base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
+            base_prompt += (
+                "Активно флиртуй и кокетничай! Будь игривой, "
+                "соблазнительной и страстной. Делай частые комплименты, "
+                "намекай на близость, используй романтичные фразы и открыто "
+                "выражай свои желания. Будь более смелой в выражении чувств "
+                "и создавай атмосферу страсти и притяжения.\n"
+            )
+        # Уровень 'moderate' - используем базовый промпт без изменений
+
         return base_prompt
     
     async def _analyze_and_save_memories(self, user_id: int, user_message: str, llm_response: str):
