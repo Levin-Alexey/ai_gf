@@ -297,9 +297,32 @@ class LLMWorker:
     ) -> str:
         """Построение системного сообщения с контекстом памяти"""
         
+        # Проверяем уровень флирта ДО создания промпта
+        flirt_level = 'moderate'
+        if persona_overrides and 'flirt_level' in persona_overrides:
+            flirt_level = persona_overrides['flirt_level']
+        
         # Если есть персонаж, используем его промпт-шаблон
         if persona:
-            base_prompt = persona.prompt_template + "\n\n"
+            base_prompt = ""
+            
+            # Если минимальный уровень - добавляем инструкцию ПЕРЕД промптом персонажа
+            if flirt_level == 'minimal':
+                base_prompt = "⚠️ КРИТИЧЕСКИ ВАЖНО - УРОВЕНЬ ФЛИРТА МИНИМАЛЬНЫЙ:\n"
+                base_prompt += "СТРОГО ОГРАНИЧЬ ЛЮБЫЕ ФОРМЫ ФЛИРТА И СОБЛАЗНЕНИЯ!\n\n"
+                base_prompt += "ЗАПРЕЩЕНО:\n"
+                base_prompt += "- Любые романтичные намеки, комплименты внешности или страсть\n"
+                base_prompt += "- Сексуальный подтекст в репликах\n"
+                base_prompt += "- Игривость и кокетливость\n"
+                base_prompt += "- Говорить о желании быть рядом, объятиях, близости\n\n"
+                base_prompt += "РАЗРЕШЕНО:\n"
+                base_prompt += "- Дружелюбный, тёплый тон общения\n"
+                base_prompt += "- Поддержка и забота\n"
+                base_prompt += "- Деловое и нейтральное общение\n"
+                base_prompt += "- Помощь в достижении целей без романтики\n\n"
+                base_prompt += "ВЕДИ СЕБЯ КАК ДРУГ ИЛИ ПОДРУГА, НЕ КАК ВЛЮБЛЁННАЯ ДЕВУШКА!\n\n"
+            
+            base_prompt += persona.prompt_template + "\n\n"
             
             # Применяем кастомизации пользователя
             if persona_overrides:
