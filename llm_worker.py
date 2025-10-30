@@ -421,8 +421,9 @@ class LLMWorker:
 
         if flirt_level == 'minimal':
             logger.info("🎯 Applying MINIMAL flirt level")
-            base_prompt += "\n\n⚠️ КРИТИЧЕСКИ ВАЖНО - УРОВЕНЬ ФЛИРТА МИНИМАЛЬНЫЙ:\n"
-            base_prompt += (
+            logger.info(f"📏 Prompt length before adding minimal: {len(base_prompt)} chars")
+            flirt_instruction = (
+                "\n\n⚠️ КРИТИЧЕСКИ ВАЖНО - УРОВЕНЬ ФЛИРТА МИНИМАЛЬНЫЙ:\n"
                 "СТРОГО ОГРАНИЧЬ ЛЮБЫЕ ФОРМЫ ФЛИРТА И СОБЛАЗНЕНИЯ!\n\n"
                 "ЗАПРЕЩЕНО:\n"
                 "- Любые романтичные намеки, комплименты внешности или страсть\n"
@@ -436,6 +437,9 @@ class LLMWorker:
                 "- Помощь в достижении целей без романтики\n\n"
                 "ВЕДИ СЕБЯ КАК ДРУГ ИЛИ ПОДРУГА, НЕ КАК ВЛЮБЛЁННАЯ ДЕВУШКА!\n"
             )
+            base_prompt += flirt_instruction
+            logger.info(f"✅ Added {len(flirt_instruction)} chars of minimal instruction")
+            logger.info(f"📏 Prompt length after adding minimal: {len(base_prompt)} chars")
         elif flirt_level == 'intense':
             logger.info("🎯 Applying INTENSE flirt level")
             base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
@@ -450,12 +454,17 @@ class LLMWorker:
 
         # Логируем финальный промпт для отладки
         logger.info(f"📝 Final system prompt length: {len(base_prompt)} chars")
-        if 'ИНСТРУКЦИЯ ПО ФЛИРТУ' in base_prompt:
+        if 'КРИТИЧЕСКИ ВАЖНО' in base_prompt:
+            start_pos = base_prompt.find('КРИТИЧЕСКИ ВАЖНО')
+            flirt_section = base_prompt[start_pos:start_pos+500]
+            logger.info(f"🎯 Flirt instruction in prompt:\n{flirt_section}")
+        elif 'ИНСТРУКЦИЯ ПО ФЛИРТУ' in base_prompt:
             start_pos = base_prompt.find('ИНСТРУКЦИЯ ПО ФЛИРТУ')
             flirt_section = base_prompt[start_pos:start_pos+500]
             logger.info(f"🎯 Flirt instruction in prompt:\n{flirt_section}")
         else:
             logger.info("❌ Flirt instruction NOT found in prompt!")
+            logger.info(f"📄 Last 500 chars of prompt:\n{base_prompt[-500:]}")
 
         return base_prompt
     
