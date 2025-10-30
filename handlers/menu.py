@@ -258,8 +258,8 @@ async def handle_character_settings_button(message: Message):
     )
 
     # Импортируем функцию из character_settings
-    from .character_settings import handle_character_settings
-    await handle_character_settings(message)
+    from .character_settings import _show_character_settings
+    await _show_character_settings(message)
 
 
 # @router.message(F.text == "🤖 Настройки бота")

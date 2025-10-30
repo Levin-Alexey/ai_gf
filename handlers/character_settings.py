@@ -38,16 +38,6 @@ class CharacterSettingsStates(StatesGroup):
     editing_about = State()
 
 
-@router.message(F.text == "🤖 Настройки")
-async def handle_character_settings(message: Message):
-    """Обработчик кнопки 'Настроить характер'"""
-    logger.info(
-        f"🎨 Получено сообщение 'Настроить характер' "
-        f"от пользователя {message.from_user.id}"
-    )
-    await _show_character_settings(message)
-
-
 async def _show_character_settings(message: Message, from_user=None):
     """Общая функция для показа настроек характера"""
     if not message:
