@@ -158,15 +158,22 @@ class LLMWorker:
             persona = None
             persona_overrides = {}
             if persona_id:
+                logger.info(f"🔍 Looking for persona_id={persona_id}, user_id={internal_user_id}")
                 async with async_session_maker() as session:
                     persona = await get_persona_by_id(session, persona_id)
+                    logger.info(f"🔍 Persona found: {persona is not None}")
                     if persona:
                         persona_setting = await get_user_persona_setting(
                             session, internal_user_id  # Внутренний ID!
                         )
+                        logger.info(f"🔍 Persona setting found: {persona_setting is not None}")
                         if persona_setting:
                             persona_overrides = persona_setting.overrides
                             logger.info(f"📋 Persona overrides loaded: {persona_overrides}")
+                        else:
+                            logger.warning("⚠️ No persona_setting found for user!")
+            else:
+                logger.warning("⚠️ No persona_id provided!")
             # Логируем загруженную персону для диагностики имени/версии
             try:
                 logger.info(
