@@ -302,6 +302,8 @@ class LLMWorker:
         if persona_overrides and 'flirt_level' in persona_overrides:
             flirt_level = persona_overrides['flirt_level']
         
+        logger.info(f"🎯 Detected flirt level: {flirt_level}")
+        
         # Если есть персонаж, используем его промпт-шаблон
         if persona:
             base_prompt = ""
@@ -436,15 +438,17 @@ class LLMWorker:
                 for key, value in custom_style.items():
                     base_prompt += f"- {key}: {value}\n"
         
-        # Добавляем инструкции по уровню флирта (только intense, minimal уже добавлен в начале)
-        if persona_overrides:
-            flirt_level = persona_overrides.get('flirt_level', 'moderate')
-            logger.info(f"🎯 Flirt level from overrides: {flirt_level}")
-        else:
-            flirt_level = 'moderate'
-            logger.info(f"🎯 Flirt level default: {flirt_level}")
-
-        if flirt_level == 'intense':
+        # Добавляем инструкции по уровню флирта (только intense и moderate, minimal уже добавлен в начале)
+        if flirt_level == 'moderate':
+            logger.info("🎯 Applying MODERATE flirt level")
+            base_prompt += "\n\nУРОВЕНЬ ФЛИРТА: УМЕРЕННЫЙ\n"
+            base_prompt += (
+                "Держись баланса между дружелюбием и романтикой. "
+                "Флиртуй мягко и естественно, без чрезмерной игривости или страсти. "
+                "Делай комплименты умеренно, намекай на близость, но не слишком открыто. "
+                "Будь тёплой и заботливой, сохраняй романтичную атмосферу без перегибов.\n"
+            )
+        elif flirt_level == 'intense':
             logger.info("🎯 Applying INTENSE flirt level")
             base_prompt += "\n\nИНСТРУКЦИЯ ПО ФЛИРТУ:\n"
             base_prompt += (
@@ -454,7 +458,7 @@ class LLMWorker:
                 "выражай свои желания. Будь более смелой в выражении чувств "
                 "и создавай атмосферу страсти и притяжения.\n"
             )
-        # Уровни 'moderate' и 'minimal' уже обработаны выше
+        # Уровень 'minimal' уже обработан выше
 
         # Логируем финальный промпт для отладки
         logger.info(f"📝 Final system prompt length: {len(base_prompt)} chars")
@@ -462,9 +466,13 @@ class LLMWorker:
             start_pos = base_prompt.find('КРИТИЧЕСКИ ВАЖНО')
             flirt_section = base_prompt[start_pos:start_pos+500]
             logger.info(f"🎯 Flirt instruction in prompt:\n{flirt_section}")
+        elif 'УРОВЕНЬ ФЛИРТА: УМЕРЕННЫЙ' in base_prompt:
+            start_pos = base_prompt.find('УРОВЕНЬ ФЛИРТА: УМЕРЕННЫЙ')
+            flirt_section = base_prompt[start_pos:start_pos+300]
+            logger.info(f"🎯 Flirt instruction in prompt:\n{flirt_section}")
         elif 'ИНСТРУКЦИЯ ПО ФЛИРТУ' in base_prompt:
             start_pos = base_prompt.find('ИНСТРУКЦИЯ ПО ФЛИРТУ')
-            flirt_section = base_prompt[start_pos:start_pos+500]
+            flirt_section = base_prompt[start_pos:start_pos+300]
             logger.info(f"🎯 Flirt instruction in prompt:\n{flirt_section}")
         else:
             logger.info("❌ Flirt instruction NOT found in prompt!")
