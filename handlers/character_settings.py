@@ -83,11 +83,11 @@ async def _show_character_settings(message: Message, from_user=None):
         )
 
         character_text = (
-            f"🎨 Настройки характера:\n\n"
+            f"👩🏻 Настрой свою девушку:\n\n"
             f"👤 Личность: {persona_text}\n"
             f"💕 Уровень флирта: {flirt_level_text}\n"
-            f"🎨 Тон общения: {tone_text}\n"
-            f"🎯 Интересов: {interests_count}\n"
+            f"🫦 Тон общения: {tone_text}\n"
+            f"💎 Интересов: {interests_count}\n"
             f"🎯 Целей: {goals_count}\n"
             f"📝 О себе: "
             f"{'Заполнено' if user.about else 'Не заполнено'}\n\n"
