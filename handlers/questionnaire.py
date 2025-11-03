@@ -268,12 +268,12 @@ async def show_goals_selection(callback: CallbackQuery, selected: list):
         'motivation': ('💪', 'Мотивация'),
         'chitchat': ('💬', 'Общение'),
         'advice': ('💡', 'Советы'),
-        'learn_english': ('🇬🇧', 'Изучение английского'),
+        # 'learn_english': ('🇬🇧', 'Изучение английского'),
         'project_ideas': ('🚀', 'Идеи для проектов'),
         'brainstorm': ('🧠', 'Мозговой штурм'),
         'stress_relief': ('😌', 'Снятие стресса'),
-        'accountability': ('✅', 'Ответственность'),
-        'daily_checkin': ('📅', 'Ежедневный чекин'),
+        # 'accountability': ('✅', 'Ответственность'),
+        # 'daily_checkin': ('📅', 'Ежедневный чекин'),
     }
 
     # Создаем кнопки
@@ -346,12 +346,12 @@ async def save_goals(callback: CallbackQuery, state: FSMContext):
         'motivation': GFGoal.MOTIVATION,
         'chitchat': GFGoal.CHITCHAT,
         'advice': GFGoal.ADVICE,
-        'learn_english': GFGoal.LEARN_ENGLISH,
+        # 'learn_english': GFGoal.LEARN_ENGLISH,
         'project_ideas': GFGoal.PROJECT_IDEAS,
         'brainstorm': GFGoal.BRAINSTORM,
         'stress_relief': GFGoal.STRESS_RELIEF,
-        'accountability': GFGoal.ACCOUNTABILITY,
-        'daily_checkin': GFGoal.DAILY_CHECKIN,
+        # 'accountability': GFGoal.ACCOUNTABILITY,
+        # 'daily_checkin': GFGoal.DAILY_CHECKIN,
     }
 
     goals_enums = [
