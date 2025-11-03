@@ -208,9 +208,9 @@ async def handle_settings(message: Message):
         goals_count = len(user.goals) if user.goals else 0
 
         settings_text = (
-            f"⚙️ Твои настройки:\n\n"
-            f"🎨 Тон общения: {tone_text}\n"
-            f"🎯 Интересов: {interests_count}\n"
+            f"👩🏻 Настройки твоей девушки:\n\n"
+            f"🫦 Тон общения: {tone_text}\n"
+            f"💎 Интересов: {interests_count}\n"
             f"🎯 Целей: {goals_count}\n"
             f"📝 О себе: {'Заполнено' if user.about else 'Не заполнено'}\n\n"
             f"Выбери, что хочешь настроить:"
