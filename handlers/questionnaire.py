@@ -169,7 +169,7 @@ async def show_interests_selection(
     # Добавляем кнопку "Готово"
     keyboard_buttons.append([
         InlineKeyboardButton(
-            text="✨ Готово",
+            text="✨ ГОТОВО",
             callback_data="interests_done"
         )
     ])
@@ -291,7 +291,7 @@ async def show_goals_selection(callback: CallbackQuery, selected: list):
     # Добавляем кнопку "Готово"
     keyboard_buttons.append([
         InlineKeyboardButton(
-            text="✨ Готово",
+            text="✨ ГОТОВО",
             callback_data="goals_done"
         )
     ])
