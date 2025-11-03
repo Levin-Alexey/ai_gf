@@ -134,6 +134,12 @@ async def _show_character_settings(message: Message, from_user=None):
                 ],
                 [
                     InlineKeyboardButton(
+                        text="🆘 Обратиться в поддержку",
+                        callback_data="support"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
                         text="🔙 Назад к настройкам",
                         callback_data="back_to_settings"
                     )
@@ -1213,3 +1219,21 @@ async def handle_back_to_character_settings_callback(
 async def handle_current_persona_callback(callback: CallbackQuery):
     """Информируем, что эта личность уже выбрана"""
     await callback.answer("У тебя уже выбрана эта личность")
+
+
+@router.callback_query(F.data == "support")
+async def handle_support_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Обратиться в поддержку'"""
+    logger.info(
+        f"🆘 SUPPORT: Получен callback поддержки от пользователя "
+        f"{callback.from_user.id}"
+    )
+
+    if callback.message:
+        await callback.message.answer(
+            "🆘 Служба поддержки\n\n"
+            "Для обращения в поддержку напишите:\n"
+            "https://t.me/AIGFSupport"
+        )
+
+    await callback.answer()
