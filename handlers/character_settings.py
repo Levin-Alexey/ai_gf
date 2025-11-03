@@ -465,6 +465,22 @@ async def handle_select_persona(message: Message):
         # Получаем всех активных персонажей
         personas = await get_active_personas(session)
 
+        # Получаем текущего пользователя и его выбранную личность
+        try:
+            user = await get_user_by_telegram_id(
+                session, telegram_id=message.from_user.id
+            )
+        except Exception:
+            user = None
+        current_persona = None
+        if user:
+            try:
+                current_persona = await get_user_current_persona(
+                    session, user.id
+                )
+            except Exception:
+                current_persona = None
+
         logger.info(f"Найдено {len(personas)} активных персонажей")
 
         if not personas:
@@ -501,17 +517,24 @@ async def handle_select_persona(message: Message):
                 f"Отправляем персонажа: {persona.name} (ID: {persona.id})"
             )
 
-            # Создаем кнопку для выбора этой личности
-            keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(
-                            text=f"{emoji} Выбрать {persona.name}",
-                            callback_data=f"select_persona_{persona.id}"
-                        )
-                    ]
-                ]
-            )
+            # Создаем кнопки для выбора/индикации выбранной личности
+            keyboard_buttons = [[
+                InlineKeyboardButton(
+                    text=f"{emoji} Выбрать {persona.name}",
+                    callback_data=f"select_persona_{persona.id}"
+                )
+            ]]
+
+            # Если эта личность уже выбрана у пользователя — добавляем нижнюю кнопку-индикатор
+            if current_persona and current_persona.id == persona.id:
+                keyboard_buttons.append([
+                    InlineKeyboardButton(
+                        text="✅ Выбрана эта личность",
+                        callback_data="current_persona"
+                    )
+                ])
+
+            keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
             # Формируем описание
             caption = (
@@ -1184,3 +1207,9 @@ async def handle_back_to_character_settings_callback(
         await callback.message.delete()
         await handle_character_settings(callback.message)
     await callback.answer()
+
+
+@router.callback_query(F.data == "current_persona")
+async def handle_current_persona_callback(callback: CallbackQuery):
+    """Информируем, что эта личность уже выбрана"""
+    await callback.answer("У тебя уже выбрана эта личность")
