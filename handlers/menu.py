@@ -180,6 +180,7 @@ def get_settings_keyboard():
             [KeyboardButton(text="🎨 Настроить характер")],
             # [KeyboardButton(text="🤖 Настройки бота")],  # Временно
             # закомментировано
+            [KeyboardButton(text="🆘 Обратиться в поддержку")],
             [KeyboardButton(text="🔙 Назад в меню")],
         ],
         resize_keyboard=True,
@@ -212,7 +213,7 @@ async def handle_settings(message: Message):
             f"🫦 Тон общения: {tone_text}\n"
             f"💎 Интересов: {interests_count}\n"
             f"🎯 Целей: {goals_count}\n"
-            f"📝 О себе: {'Заполнено' if user.about else 'Не заполнено'}\n\n"
+            f"✍️ О себе: {'Заполнено' if user.about else 'Не заполнено'}\n\n"
             f"Выбери, что хочешь настроить:"
         )
 
@@ -222,6 +223,7 @@ async def handle_settings(message: Message):
                 [KeyboardButton(text="🎨 Настроить характер")],
                 # [KeyboardButton(text="🤖 Настройки бота")],  # Временно
                 # закомментировано
+                [KeyboardButton(text="🆘 Обратиться в поддержку")],
                 [KeyboardButton(text="🔙 Назад в меню")]
             ],
             resize_keyboard=True,
@@ -260,6 +262,23 @@ async def handle_character_settings_button(message: Message):
     # Импортируем функцию из character_settings
     from .character_settings import _show_character_settings
     await _show_character_settings(message)
+
+
+@router.message(F.text == "🆘 Обратиться в поддержку")
+async def handle_support_button(message: Message):
+    """Обработчик кнопки 'Обратиться в поддержку'"""
+    logger.info(
+        f"🆘 SUPPORT: Получено сообщение "
+        f"'Обратиться в поддержку' от пользователя "
+        f"{message.from_user.id}"
+    )
+
+    # Используем ту же логику, что и команда /support
+    await message.answer(
+        "🆘 Служба поддержки\n\n"
+        "Для обращения в поддержку напишите:\n"
+        "https://t.me/AIGFSupport"
+    )
 
 
 # @router.message(F.text == "🤖 Настройки бота")
