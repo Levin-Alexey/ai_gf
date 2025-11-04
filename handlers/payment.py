@@ -33,7 +33,7 @@ Configuration.secret_key = PAYMENT_SECRET_KEY
 
 
 async def send_subscription_menu_message(target: Message):
-    """Отправить меню подписки (1 месяц — 10₽)."""
+    """Отправить меню подписки (1 месяц — 290₽)."""
     await target.answer(
         "💎 <b>Подписка</b>\n\n"
         "С подпиской вы получите:\n"
@@ -41,11 +41,11 @@ async def send_subscription_menu_message(target: Message):
         "• 🎭 Доступ ко всем персонажам\n"
         "• ⚡ Быстрые ответы\n"
         "• 💬 Приоритетная поддержка\n\n"
-        "<i>1 месяц доступа — всего 10₽</i>",
+        "<i>1 месяц доступа — всего 290₽</i>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(
-                text="📅 1 месяц — 10₽",
+                text="📅 1 месяц — 290₽",
                 callback_data="subscribe_1m"
             )],
             [InlineKeyboardButton(
@@ -55,7 +55,7 @@ async def send_subscription_menu_message(target: Message):
         ])
     )
     
-    logger.info("Показано меню подписки (1м/10₽)")
+    logger.info("Показано меню подписки (1м/290₽)")
 
 
 @router.message(Command("pay"))
@@ -81,7 +81,7 @@ async def handle_subscribe(callback: CallbackQuery):
     
     # Определяем параметры тарифа
     plans = {
-        "1m": {"name": "1 месяц", "price": 10, "days": 30}
+        "1m": {"name": "1 месяц", "price": 290, "days": 30}
     }
     
     plan = plans.get(period)
