@@ -17,7 +17,10 @@ from crud import (
     get_user_by_telegram_id,
     add_user_interests,
     add_user_goals,
-    update_user_about
+    update_user_about,
+    get_active_personas,
+    get_persona_by_id,
+    set_user_persona
 )
 from models import GFTone, GFInterest, GFGoal
 from .menu import show_main_menu
@@ -32,6 +35,7 @@ class QuestionnaireStates(StatesGroup):
     choosing_interests = State()
     choosing_goals = State()
     waiting_about = State()
+    choosing_persona = State()
 
 
 async def show_tone_selection(callback: CallbackQuery):
@@ -73,7 +77,7 @@ async def show_tone_selection(callback: CallbackQuery):
 
     if callback.message:
         await callback.message.edit_text(
-            "🎨 Выбери тон общения, который тебе не нравится:\n\n"
+            "🎨 Выбери тон общения, который тебе нравится:\n\n"
             "😊 Дружелюбный — тёплый и позитивный\n"
             "💖 Нежный — мягкий и заботливый\n"
             "😎 Нейтральный — спокойный и сдержанный\n"
@@ -407,36 +411,243 @@ async def save_about(message: types.Message, state: FSMContext):
         )
         await session.commit()
 
-        # Получаем обновленного пользователя
-        user = await get_user_by_telegram_id(
-            session,
-            telegram_id=message.from_user.id
-        )
-
     logger.info(
         f"Пользователь {message.from_user.id} "
         f"рассказал о себе ({len(about_text)} символов)"
     )
 
-    # Завершаем опросник
-    await state.clear()
+    # Переходим к выбору персонажа
+    await state.set_state(QuestionnaireStates.choosing_persona)
 
-    # Финальное сообщение после завершения всего опросника
-    if user:
+    # Показываем выбор персонажей
+    await show_personas_selection_for_questionnaire(message)
+
+
+async def show_personas_selection_for_questionnaire(message: types.Message):
+    """Показать выбор персонажей после опросника"""
+    try:
+        async with async_session_maker() as session:
+            # Получаем всех активных персонажей
+            personas = await get_active_personas(session)
+
+            # Получаем пользователя
+            user = await get_user_by_telegram_id(
+                session,
+                telegram_id=message.from_user.id
+            )
+
+        if not user:
+            await message.answer(
+                "⚠️ Ошибка: пользователь не найден"
+            )
+            return
+
+        if not personas:
+            logger.warning("Нет активных персонажей в базе данных")
+            await message.answer(
+                "👤 Выбор личности\n\n"
+                "К сожалению, пока нет доступных личностей. "
+                "Скоро здесь можно будет выбрать личность! ✨"
+            )
+            # Если нет персонажей, просто показываем главное меню
+            await show_main_menu(message, user.get_display_name())
+            return
+
+        # Отправляем заголовок
         await message.answer(
-            f"🎉 Отлично, {user.get_display_name()}!\n\n"
-            "Теперь я знаю тебя намного лучше:\n"
-            "✅ Твой тон общения\n"
-            "✅ Твои интересы\n"
-            "✅ Твои цели\n"
-            "✅ Информацию о тебе\n\n"
-            "Я готова помочь тебе именно так, как тебе нужно! 💫"
+            "👤 Выбери личность для общения:\n\n"
+            "Нажми на кнопку под картинкой, чтобы выбрать:",
+            parse_mode="Markdown"
         )
 
-        # Сразу показываем главное меню
-        await show_main_menu(message, user.get_display_name())
-    else:
+        # Эмодзи-аватары для каждого персонажа
+        persona_emojis = {
+            'Нейра': '🌌',
+            'Фокс': '🕵️',
+            'Лина': '☕',
+            'Эва': '📚',
+            'Рейна': '💻'
+        }
+
+        # Отправляем каждую личность отдельным сообщением
+        for persona in personas:
+            emoji = persona_emojis.get(persona.name, '👤')
+            logger.info(
+                f"Отправляем персонажа: {persona.name} (ID: {persona.id})"
+            )
+
+            # Создаем кнопку для выбора
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[[
+                    InlineKeyboardButton(
+                        text=f"{emoji} Выбрать {persona.name}",
+                        callback_data=f"questionnaire_persona_{persona.id}"
+                    )
+                ]]
+            )
+
+            # Формируем описание
+            caption = (
+                f"👤 **{persona.name}**\n\n{persona.short_desc}"
+            )
+
+            # Если есть аватар, отправляем фото с описанием и кнопкой
+            if persona.avatar_url:
+                try:
+                    await message.answer_photo(
+                        photo=persona.avatar_url,
+                        caption=caption,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown"
+                    )
+                    logger.info(f"Отправлено фото для {persona.name}")
+                except Exception as e:
+                    logger.warning(
+                        f"Не удалось отправить изображение "
+                        f"для {persona.name}: {e}"
+                    )
+                    # Если не удалось отправить фото, отправляем текст
+                    await message.answer(
+                        caption,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown"
+                    )
+            else:
+                # Если нет аватара, отправляем только текст с кнопкой
+                await message.answer(
+                    caption,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown"
+                )
+
+    except Exception as e:
+        logger.error(f"Ошибка при показе выбора персонажей: {e}")
         await message.answer(
-            "✅ Настройка завершена!\n\n"
-            "Теперь можем общаться! Напиши мне что-нибудь 😊"
+            "❌ Произошла ошибка. Попробуйте еще раз."
         )
+
+
+@router.callback_query(
+    F.data.startswith("questionnaire_persona_"),
+    QuestionnaireStates.choosing_persona
+)
+async def handle_questionnaire_persona_selection(
+    callback: CallbackQuery,
+    state: FSMContext
+):
+    """Обработчик выбора персонажа в опроснике"""
+    if not callback.data:
+        logger.error("Получен пустой callback_data")
+        await callback.answer("❌ Ошибка данных", show_alert=True)
+        return
+
+    try:
+        persona_id = int(callback.data.split("_")[2])
+        logger.info(
+            f"Пользователь {callback.from_user.id} выбирает "
+            f"персонажа ID: {persona_id} в опроснике"
+        )
+    except (ValueError, IndexError) as e:
+        logger.error(f"Ошибка парсинга persona_id из {callback.data}: {e}")
+        await callback.answer("❌ Ошибка данных", show_alert=True)
+        return
+
+    async with async_session_maker() as session:
+        # Получаем персонажа по ID
+        selected_persona = await get_persona_by_id(session, persona_id)
+
+        if not selected_persona:
+            logger.warning(f"Персонаж с ID {persona_id} не найден")
+            await callback.answer(
+                "❌ Персонаж не найден", show_alert=True
+            )
+            return
+
+        # Получаем пользователя
+        user = await get_user_by_telegram_id(
+            session,
+            telegram_id=callback.from_user.id
+        )
+
+        if not user:
+            logger.warning(f"Пользователь {callback.from_user.id} не найден")
+            await callback.answer(
+                "⚠️ Сначала нужно пройти настройку", show_alert=True
+            )
+            return
+
+        try:
+            # Устанавливаем персонажа для пользователя
+            await set_user_persona(session, user.id, selected_persona.id)
+            await session.commit()
+
+            logger.info(
+                f"Пользователь {callback.from_user.id} успешно выбрал "
+                f"персонажа {selected_persona.name} в опроснике"
+            )
+
+            # Завершаем опросник
+            await state.clear()
+
+            # Обновляем сообщение
+            if callback.message and hasattr(callback.message, 'edit_text'):
+                success_text = (
+                    f"✅ Личность **{selected_persona.name}** выбрана!\n\n"
+                    f"Теперь я буду общаться с тобой в образе "
+                    f"{selected_persona.name}.\n\n"
+                    f"**{selected_persona.short_desc}**"
+                )
+
+                # Проверяем тип сообщения
+                if (hasattr(callback.message, 'photo') and
+                        callback.message.photo):
+                    # Если это фото, используем edit_caption
+                    try:
+                        await callback.message.edit_caption(
+                            caption=success_text,
+                            parse_mode="Markdown"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Не удалось изменить caption: {e}"
+                        )
+                        # Если не получилось, отправляем новое сообщение
+                        await callback.message.answer(
+                            success_text,
+                            parse_mode="Markdown"
+                        )
+                elif hasattr(callback.message, 'edit_text'):
+                    # Если это текстовое сообщение, редактируем его
+                    await callback.message.edit_text(
+                        success_text,
+                        parse_mode="Markdown"
+                    )
+
+            # Финальное сообщение после завершения всего опросника
+            if callback.message:
+                await callback.message.answer(
+                    f"🎉 Отлично, {user.get_display_name()}!\n\n"
+                    "Теперь я знаю тебя намного лучше:\n"
+                    "✅ Твой тон общения\n"
+                    "✅ Твои интересы\n"
+                    "✅ Твои цели\n"
+                    "✅ Информацию о тебе\n"
+                    f"✅ Выбранную личность: {selected_persona.name}\n\n"
+                    "Я готова помочь тебе именно так, как тебе нужно! 💫"
+                )
+
+                # Показываем главное меню
+                await show_main_menu(callback.message, user.get_display_name())
+
+            await callback.answer(
+                f"Выбрана личность: {selected_persona.name}"
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Ошибка при установке персонажа {selected_persona.name} "
+                f"для пользователя {callback.from_user.id}: {e}"
+            )
+            await callback.answer(
+                "❌ Произошла ошибка при выборе личности", show_alert=True
+            )
