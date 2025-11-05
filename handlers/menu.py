@@ -13,7 +13,7 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 def get_photo_album_keyboard():
-
+    """Клавиатура для фотоальбома"""
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="💬 Начать чат")],
@@ -25,6 +25,11 @@ def get_photo_album_keyboard():
         one_time_keyboard=False
     )
     return keyboard
+
+
+def get_main_menu_keyboard():
+    """Главное меню клавиатура"""
+    return get_photo_album_keyboard()
 
 async def show_main_menu(message: Message, user_name: str):
 
@@ -77,7 +82,6 @@ async def send_photos_to_user(message: Message, photo_urls: list):
             "Подпишись, чтобы получить доступ к:\n"
             "• Эксклюзивным фотографиям 📸\n"
             "• Личным снимкам персонажей 💕\n"
-            "• Новым фото каждую неделю 🆕\n\n"
             "Оформи подписку и получи полный доступ! ✨",
             reply_markup=get_main_menu_keyboard()
         )
