@@ -140,8 +140,8 @@ async def _show_character_settings(message: Message, from_user=None):
                 ],
                 [
                     InlineKeyboardButton(
-                        text="🔙 Назад к настройкам",
-                        callback_data="back_to_settings"
+                        text="🏠 Главное меню",
+                        callback_data="back_to_main_menu"
                     )
                 ]
             ]
@@ -1014,12 +1014,32 @@ async def save_about_for_settings(message: Message, state: FSMContext):
     )
 
 
-@router.callback_query(F.data == "back_to_settings")
-async def handle_back_to_settings_callback(callback: CallbackQuery):
-    """Обработчик кнопки 'Назад к настройкам'"""
-    from .menu import handle_settings
-    if callback.message:
-        await handle_settings(callback.message)
+@router.callback_query(F.data == "back_to_main_menu")
+async def handle_back_to_main_menu_callback(callback: CallbackQuery):
+    """Обработчик кнопки 'Главное меню'"""
+    from .menu import show_main_menu
+
+    if not callback.message or isinstance(
+        callback.message, InaccessibleMessage
+    ):
+        await callback.answer(
+            "❌ Ошибка: сообщение не найдено", show_alert=True
+        )
+        return
+
+    # Получаем пользователя для отображения имени
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session,
+            telegram_id=callback.from_user.id
+        )
+
+    if not user:
+        await callback.answer("⚠️ Пользователь не найден", show_alert=True)
+        return
+
+    # Показываем главное меню как в /start
+    await show_main_menu(callback.message, user.get_display_name())
     await callback.answer()
 
 
