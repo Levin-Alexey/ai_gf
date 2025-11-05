@@ -1,12 +1,9 @@
-"""
-Обработчик чата с AI
-"""
 import logging
 import time
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.state import StatesGroup
 
 from database import async_session_maker
 from crud import get_user_by_telegram_id, get_user_current_persona
@@ -19,11 +16,11 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 class ChatStates(StatesGroup):
-    """Состояния чата"""
-    chatting = State()
+    pass
+
 
 def get_chat_keyboard():
-    """Создать клавиатуру для чата"""
+    """Клавиатура для чата"""
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🏠 Главное меню")],
@@ -34,78 +31,22 @@ def get_chat_keyboard():
     )
     return keyboard
 
+
 @router.message(F.text == "💬 Начать чат")
 async def handle_start_chat(message: Message, state: FSMContext):
-    """Обработчик кнопки 'Начать чат'"""
+
     try:
-        # Получаем пользователя из БД
-        async with async_session_maker() as session:
-            user = await get_user_by_telegram_id(
-                session,
-                telegram_id=message.from_user.id
-            )
 
-        if not user:
-            await message.answer(
-                "⚠️ Сначала нужно пройти настройку. Напиши /start"
-            )
-            return
-
-        # Устанавливаем состояние чата
-        await state.set_state(ChatStates.chatting)
-        
-        # Устанавливаем состояние в Redis
-        if message.from_user.id:
-            await redis_client.set_user_chat_state(message.from_user.id, True)
-        
-        # Получаем историю чата
-        if message.from_user.id:
-            chat_history = await redis_client.get_chat_history(message.from_user.id)
-        else:
-            chat_history = []
-        
-        if chat_history:
-            welcome_message = (
-                f"💬 Чат с {user.get_display_name()}\n\n"
-                "Продолжаем нашу беседу! Напиши что-нибудь 😊"
-            )
-        else:
-            welcome_message = (
-                f"💬 Чат начался! 💞\n\n"
-                "Привет! Я твоя AI-девушка, которая всегда рядом 🥰 \n"
-                "Жду твои сообщения 💕"
-            )
-
-        await message.answer(
-            welcome_message,
-            reply_markup=get_chat_keyboard()
-        )
-        
-        if message.from_user.id:
-            logger.info(f"Пользователь {message.from_user.id} начал чат")
-        
-    except Exception as e:
-        logger.error(f"Ошибка начала чата: {e}")
-        await message.answer(
-            "❌ Произошла ошибка при запуске чата. Попробуйте еще раз."
-        )
-
-@router.message(F.text == "🏠 Главное меню")
-async def handle_back_to_menu(message: Message, state: FSMContext):
-    """Обработчик кнопки 'Главное меню'"""
-    try:
-        # Сбрасываем состояние чата
         await state.clear()
         if message.from_user.id:
             await redis_client.set_user_chat_state(message.from_user.id, False)
-        
-        # Получаем пользователя для отображения имени
+
         async with async_session_maker() as session:
             user = await get_user_by_telegram_id(
                 session,
                 telegram_id=message.from_user.id
             )
-        
+
         if user:
             from .menu import show_main_menu
             await show_main_menu(message, user.get_display_name())
@@ -114,59 +55,30 @@ async def handle_back_to_menu(message: Message, state: FSMContext):
                 "🏠 Главное меню",
                 reply_markup=get_main_menu_keyboard()
             )
-            
+
         if message.from_user.id:
             logger.info(f"Пользователь {message.from_user.id} вернулся в главное меню")
-        
+
     except Exception as e:
         logger.error(f"Ошибка возврата в меню: {e}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте еще раз."
         )
 
+
 @router.message(F.text == "🗑 Очистить историю")
 async def handle_clear_history(message: Message):
     """Обработчик кнопки 'Очистить историю'"""
     try:
-        # Очищаем историю чата в Redis
-        if message.from_user.id:
-            await redis_client.clear_chat_history(message.from_user.id)
-        
-        await message.answer(
-            "🗑 История чата очищена!\n\n"
-            "Теперь мы начинаем с чистого листа! 😊"
-        )
-        
-        if message.from_user.id:
-            logger.info(f"Пользователь {message.from_user.id} очистил историю чата")
-        
-    except Exception as e:
-        logger.error(f"Ошибка очистки истории: {e}")
-        await message.answer(
-            "❌ Произошла ошибка при очистке истории. Попробуйте еще раз."
-        )
-
-@router.message(ChatStates.chatting)
-async def handle_chat_message(message: Message):
-    """Обработчик сообщений в режиме чата"""
-    try:
         user_id = message.from_user.id
-        chat_id = message.chat.id
-        user_message = message.text
-        
-        # Проверяем, что пользователь в режиме чата
-        if user_id:
-            is_chatting = await redis_client.get_user_chat_state(user_id)
-        else:
-            is_chatting = False
-            
-        if not is_chatting:
+
+        if not user_id:
             await message.answer(
-                "💬 Для начала чата нажмите кнопку 'Начать чат' в главном меню"
+                "❌ Ошибка: не удалось определить пользователя"
             )
             return
-        
-        # Получаем пользователя и текущего персонажа
+
+        # Получаем пользователя для логирования
         async with async_session_maker() as session:
             user = await get_user_by_telegram_id(session, telegram_id=user_id)
             if not user:
@@ -174,14 +86,56 @@ async def handle_chat_message(message: Message):
                     "⚠️ Сначала нужно пройти настройку. Напиши /start"
                 )
                 return
-            
-            # Проверяем лимит сообщений
+
+        # Очищаем историю чата напрямую
+        await redis_client.clear_chat_history(user_id)
+
+        logger.info(f"Пользователь {user_id} очистил историю чата")
+
+        # Отправляем подтверждение
+        await message.answer(
+            "✅ История чата очищена!\n\n"
+            "Новый диалог начнется с чистого листа. "
+            "Я не буду помнить предыдущие сообщения. 💫"
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка очистки истории чата: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при очистке истории. Попробуйте еще раз."
+        )
+
+
+@router.message()
+async def handle_other_messages(message: Message):
+    """Обработчик обычных сообщений в чате"""
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        user_message = message.text
+
+        if user_id:
+            is_chatting = await redis_client.get_user_chat_state(user_id)
+        else:
+            is_chatting = False
+
+        if not is_chatting:
+            # Если пользователь не в режиме чата, игнорируем сообщение
+            return
+
+        async with async_session_maker() as session:
+            user = await get_user_by_telegram_id(session, telegram_id=user_id)
+            if not user:
+                await message.answer(
+                    "⚠️ Сначала нужно пройти настройку. Напиши /start"
+                )
+                return
+
             can_send, messages_left = await check_message_limit(
                 redis_client, user
             )
-            
+
             if not can_send:
-                # Лимит исчерпан - показываем сообщение о подписке
                 await message.answer(
                     "😔 Вы достигли дневного лимита (10 сообщений).\n\n"
                     "💎 Оформите подписку для безлимитного общения с вашей AI-подругой!\n\n"
@@ -200,32 +154,27 @@ async def handle_chat_message(message: Message):
                     f"Пользователь {user_id} достиг лимита сообщений"
                 )
                 return
-            
-            # Показываем предупреждение, если осталось мало сообщений
+
             if 0 <= messages_left <= 2:
                 warning_text = (
                     f"⚠️ Осталось сообщений сегодня: {messages_left}\n"
                     "Оформите подписку для безлимитного общения! 💎"
                 )
                 await message.answer(warning_text)
-            
-            # Получаем текущего персонажа
+
             current_persona = await get_user_current_persona(session, user.id)
-            
-            # Логируем для диагностики
+
             logger.info(
                 f"📋 Current persona for user {user_id}: "
                 f"persona_id={current_persona.id if current_persona else None}, "
                 f"name={current_persona.name if current_persona else 'None'}"
             )
-        
-        # Отправляем подтверждение пользователю и сохраняем ID сообщения
+
         thinking_message = await message.answer(
             "Печатаю ответ...",
             reply_markup=get_chat_keyboard()
         )
-        
-        # Отправляем сообщение в очередь для обработки LLM
+
         queue_message = {
             "user_id": user_id,
             "chat_id": chat_id,
@@ -234,27 +183,19 @@ async def handle_chat_message(message: Message):
             "persona_id": current_persona.id if current_persona else None,
             "thinking_message_id": thinking_message.message_id
         }
-        
-        # Логируем отправку в очередь
+
         logger.info(
             f"📤 Sending to queue for user {user_id}: "
             f"persona_id={queue_message['persona_id']}"
         )
-        
+
         await queue_client.publish_message(queue_message)
-        
+
         if user_id:
             logger.info(f"Сообщение пользователя {user_id} отправлено в очередь")
-        
+
     except Exception as e:
         logger.error(f"Ошибка обработки сообщения чата: {e}")
         await message.answer(
             "❌ Произошла ошибка при обработке сообщения. Попробуйте еще раз."
         )
-
-@router.message()
-async def handle_other_messages(message: Message):
-    """Обработчик всех остальных сообщений"""
-    # Если пользователь не в режиме чата, игнорируем сообщения
-    # (они будут обработаны другими обработчиками)
-    pass
