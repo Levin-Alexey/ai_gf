@@ -23,7 +23,7 @@ def get_chat_keyboard():
     """Клавиатура для чата"""
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Главное меню")],
+            #[KeyboardButton(text="🏠 Главное меню")],
             [KeyboardButton(text="🗑 Очистить историю")],
         ],
         resize_keyboard=True,
