@@ -70,7 +70,6 @@ async def send_photos_to_user(message: Message, photo_urls: list):
     # Если переданы URL фотографий, отправляем их
     if photo_urls:
         from aiogram.types import InputMediaPhoto
-        from aiogram import Bot
         
         try:
             # Отправляем фотографии группами по 10 (лимит Telegram)
