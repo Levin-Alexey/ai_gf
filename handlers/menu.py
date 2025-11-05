@@ -68,10 +68,13 @@ async def send_photos_to_user(message: Message, photo_urls: list):
             has_active_subscription = True
 
     if has_active_subscription:
-
-        await show_photo_album_personas(message)
+        # TODO: Реализовать показ фотоальбома персонажей
+        await message.answer(
+            "📸 Фотоальбом\n\n"
+            "Скоро здесь будут фотографии персонажей! ✨",
+            reply_markup=get_main_menu_keyboard()
+        )
     else:
-
         await message.answer(
             "📸 Фотоальбом\n\n"
             "💎 Этот раздел доступен только подписчикам!\n\n"
@@ -84,67 +87,44 @@ async def send_photos_to_user(message: Message, photo_urls: list):
 
 @router.message(F.text == "💳 Оплата")
 async def handle_payment(message: Message):
-
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🎨 Настроить характер")],
-            [KeyboardButton(text="🗑 Очистить историю")],
-            [KeyboardButton(text="🆘 Обратиться в поддержку")],
-            [KeyboardButton(text="🔙 Назад в меню")],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
-    return keyboard
+    """Обработчик кнопки Оплата"""
+    from .payment import send_subscription_menu_message
+    await send_subscription_menu_message(message)
 
 @router.message(F.text == "⚙️ Настройки")
 async def handle_settings(message: Message):
-
-    user_name = (
-        message.from_user.first_name or "друг"
-        if message.from_user else "друг"
-    )
-    await show_main_menu(message, user_name)
+    """Обработчик кнопки Настройки"""
+    from .character_settings import _show_character_settings
+    await _show_character_settings(message)
 
 @router.message(F.text == "🎨 Настроить характер")
-async def handle_character_settings_button(message: Message):
+async def handle_character_settings(message: Message):
+    """Обработчик кнопки Настроить характер"""
+    from .character_settings import _show_character_settings
+    await _show_character_settings(message)
 
-    logger.info(
-        f"🆘 SUPPORT: Получено сообщение "
-        f"'Обратиться в поддержку' от пользователя "
-        f"{message.from_user.id}"
-    )
-
-    await message.answer(
-        "🆘 Служба поддержки\n\n"
-        "Для обращения в поддержку напишите:\n"
-        "https://t.me/AIGFSupport"
-    )
+@router.message(F.text == "📸 Фотоальбом")
+async def handle_photo_album(message: Message):
+    """Обработчик кнопки Фотоальбом"""
+    await send_photos_to_user(message, [])
 
 @router.message(F.text == "🔙 Назад в меню")
 async def handle_back_to_main_button(message: Message):
-
-    logger.info(
-        f"👩 Получено сообщение 'Эва' от пользователя {message.from_user.id}"
-    )
-
-    await message.answer(
-        "👩 Эва\n\n"
-        "Нежная и романтичная красавица 💕\n\n"
-        "Вот мои фотографии для тебя... 💕",
-        reply_markup=get_photo_album_keyboard()
-    )
-
-    eva_photos = [
-        "https://storage.imgbly.com/imgbly/7NLa1jKFx4.png",
-        "https://storage.imgbly.com/imgbly/1Jy8XffVp9.png",
-        "https://storage.imgbly.com/imgbly/DlkpWwfVjl.png",
-        "https://storage.imgbly.com/imgbly/3ZIbnMP6Ss.png",
-        "https://storage.imgbly.com/imgbly/BnEZ6olb3e.png",
-        "https://storage.imgbly.com/imgbly/q1Zlni2A6q.jpg"
-    ]
-
-    await send_photos_to_user(message, eva_photos)
+    """Обработчик кнопки Назад в меню"""
+    async with async_session_maker() as session:
+        user = await get_user_by_telegram_id(
+            session,
+            telegram_id=message.from_user.id
+        )
+    
+    if user:
+        await show_main_menu(message, user.get_display_name())
+    else:
+        user_name = (
+            message.from_user.first_name or "друг"
+            if message.from_user else "друг"
+        )
+        await show_main_menu(message, user_name)
 
 @router.message(F.text == "👩 Лина")
 async def handle_lina_photos(message: Message):
