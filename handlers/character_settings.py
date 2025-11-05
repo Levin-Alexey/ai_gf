@@ -55,7 +55,7 @@ async def _show_character_settings(message: Message, from_user=None):
             current_persona = await get_user_current_persona(
                 session, user.id
             )
-        
+
         # Получаем уровень флирта
         async with async_session_maker() as session:
             persona_setting = await get_user_persona_setting(session, user.id)
@@ -89,7 +89,7 @@ async def _show_character_settings(message: Message, from_user=None):
             f"🫦 Тон общения: {tone_text}\n"
             f"💎 Интересов: {interests_count}\n"
             f"🎯 Целей: {goals_count}\n"
-            f"📝 О себе: "
+            f"✍️ О себе: "
             f"{'Заполнено' if user.about else 'Не заполнено'}\n\n"
             f"Выбери, что хочешь изменить:"
         )
@@ -110,13 +110,13 @@ async def _show_character_settings(message: Message, from_user=None):
                 ],
                 [
                     InlineKeyboardButton(
-                        text="🎨 Изменить тон общения",
+                        text="🫦 Изменить тон общения",
                         callback_data="change_tone"
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        text="🎯 Мои интересы",
+                        text="💎 Мои интересы",
                         callback_data="my_interests"
                     )
                 ],
@@ -128,7 +128,7 @@ async def _show_character_settings(message: Message, from_user=None):
                 ],
                 [
                     InlineKeyboardButton(
-                        text="📝 О себе",
+                        text="✍️ О себе",
                         callback_data="about_me"
                     )
                 ],
@@ -198,7 +198,7 @@ async def show_tone_selection_for_settings(callback: CallbackQuery):
 
     if callback.message and hasattr(callback.message, 'edit_text'):
         await callback.message.edit_text(
-            "🎨 Выбери новый тон общения:\n\n"
+            "🫦 Выбери новый тон общения:\n\n"
             "😊 Дружелюбный — тёплый и позитивный\n"
             "💖 Нежный — мягкий и заботливый\n"
             "😎 Нейтральный — спокойный и сдержанный\n"
@@ -214,8 +214,20 @@ async def show_flirt_level_selection_for_settings(
     """Показать выбор уровня флирта в настройках"""
     # Получаем текущий уровень флирта
     async with async_session_maker() as session:
+        # Сначала получаем пользователя по telegram_id
+        user = await get_user_by_telegram_id(
+            session, telegram_id=callback.from_user.id
+        )
+
+        if not user:
+            await callback.answer(
+                "⚠️ Пользователь не найден", show_alert=True
+            )
+            return
+
+        # Получаем настройки персонажа по внутреннему user_id
         persona_setting = await get_user_persona_setting(
-            session, user_id=callback.from_user.id
+            session, user_id=user.id
         )
 
     current_flirt_level = 'moderate'
@@ -444,13 +456,13 @@ async def show_about_edit_for_settings(callback: CallbackQuery):
     if callback.message and hasattr(callback.message, 'edit_text'):
         if current_about:
             message_text = (
-                f"📝 Информация о себе:\n\n"
+                f"✍️ Информация о себе:\n\n"
                 f"{current_about}\n\n"
                 f"Выбери действие:"
             )
         else:
             message_text = (
-                "📝 Информация о себе:\n\n"
+                "✍️ Информация о себе:\n\n"
                 "Пока не заполнено.\n\n"
                 "Расскажи о себе, чтобы я могла лучше понимать тебя! 💫"
             )
@@ -926,7 +938,7 @@ async def handle_edit_about_text_callback(
     """Обработчик кнопки 'Редактировать' информацию о себе"""
     if callback.message and hasattr(callback.message, 'edit_text'):
         await callback.message.edit_text(
-            "✏️ Расскажи о себе:\n\n"
+            "✍️ Расскажи о себе:\n\n"
             "Чем занимаешься? Что тебя вдохновляет?\n"
             "Какие у тебя планы и мечты?\n\n"
             "Просто напиши текстом, и я сохраню эту информацию! 💫"
@@ -1057,7 +1069,7 @@ async def handle_persona_selection_callback(callback: CallbackQuery):
             # Устанавливаем персонажа для пользователя
             await set_user_persona(session, user.id, selected_persona.id)
             await session.commit()
-            
+
             logger.info(
                 f"Пользователь {callback.from_user.id} успешно выбрал "
                 f"персонажа {selected_persona.name}"
@@ -1178,29 +1190,8 @@ async def process_flirt_level_selection_for_settings(
             f"изменил уровень флирта на: {flirt_level}"
         )
 
-        # Названия уровней для отображения
-        flirt_level_names = {
-            'minimal': 'Минимальный',
-            'moderate': 'Умеренный',
-            'intense': 'Интенсивный'
-        }
-
-        flirt_level_emoji = {
-            'minimal': '😊',
-            'moderate': '💕',
-            'intense': '💋'
-        }
-
-        # Показываем подтверждение
-        if hasattr(callback.message, 'edit_text'):
-            await callback.message.edit_text(
-                f"{flirt_level_emoji[flirt_level]} Уровень флирта "
-                f"изменён на **{flirt_level_names[flirt_level]}**!\n\n"
-                f"Теперь я буду общаться с тобой на этом уровне. "
-                f"Можешь начать чат и почувствовать разницу! 💫",
-                parse_mode="Markdown"
-            )
-
+        # Обновляем меню выбора, чтобы показать правильную галочку
+        await show_flirt_level_selection_for_settings(callback)
         await callback.answer("Уровень флирта изменён!")
 
 
@@ -1211,7 +1202,7 @@ async def handle_back_to_character_settings_callback(
     """Обработчик кнопки 'Назад к настройкам'"""
     if callback.message and hasattr(callback.message, 'delete'):
         await callback.message.delete()
-        await handle_character_settings(callback.message)
+        await _show_character_settings(callback.message)
     await callback.answer()
 
 
