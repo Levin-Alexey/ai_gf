@@ -126,6 +126,10 @@ async def handle_clear_history(message: Message):
 async def handle_other_messages(message: Message):
     """Обработчик обычных сообщений в чате"""
     try:
+        # Пропускаем команды - они обрабатываются другими роутерами
+        if message.text and message.text.startswith('/'):
+            return
+            
         user_id = message.from_user.id
         chat_id = message.chat.id
         user_message = message.text

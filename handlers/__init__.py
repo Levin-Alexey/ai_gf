@@ -19,10 +19,10 @@ main_router.include_router(support_router)  # Поддержка в начале
 main_router.include_router(start_router)
 main_router.include_router(questionnaire_router)
 main_router.include_router(menu_router)
+main_router.include_router(payment_router)  # payment перед chat, чтобы команды обрабатывались
 main_router.include_router(chat_router)
 main_router.include_router(character_settings_router)
 main_router.include_router(bot_settings_router)
-main_router.include_router(payment_router)
 main_router.include_router(messages_router)  # messages в конце (catch-all)
 
 __all__ = ['main_router']
