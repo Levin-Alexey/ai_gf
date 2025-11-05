@@ -34,33 +34,49 @@ def get_chat_keyboard():
 
 @router.message(F.text == "💬 Начать чат")
 async def handle_start_chat(message: Message, state: FSMContext):
-
+    """Обработчик кнопки 'Начать чат'"""
     try:
+        user_id = message.from_user.id
+        
+        if not user_id:
+            await message.answer(
+                "❌ Ошибка: не удалось определить пользователя"
+            )
+            return
 
+        # Очищаем состояние FSM
         await state.clear()
-        if message.from_user.id:
-            await redis_client.set_user_chat_state(message.from_user.id, False)
+        
+        # Включаем режим чата
+        await redis_client.set_user_chat_state(user_id, True)
 
+        # Получаем информацию о пользователе
         async with async_session_maker() as session:
             user = await get_user_by_telegram_id(
                 session,
-                telegram_id=message.from_user.id
+                telegram_id=user_id
             )
 
+        # Получаем текущего персонажа
+        persona_name = "подруга"
         if user:
-            from .menu import show_main_menu
-            await show_main_menu(message, user.get_display_name())
-        else:
-            await message.answer(
-                "🏠 Главное меню",
-                reply_markup=get_main_menu_keyboard()
-            )
+            from crud import get_user_current_persona
+            current_persona = await get_user_current_persona(session, user.id)
+            if current_persona:
+                persona_name = current_persona.name
 
-        if message.from_user.id:
-            logger.info(f"Пользователь {message.from_user.id} вернулся в главное меню")
+        # Показываем клавиатуру чата
+        await message.answer(
+            f"💬 Чат начат!\n\n"
+            f"Привет! Я {persona_name}, готова поболтать с тобой! 💕\n\n"
+            f"Напиши мне что-нибудь, и я отвечу! ✨",
+            reply_markup=get_chat_keyboard()
+        )
+
+        logger.info(f"Пользователь {user_id} начал чат")
 
     except Exception as e:
-        logger.error(f"Ошибка возврата в меню: {e}")
+        logger.error(f"Ошибка начала чата: {e}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте еще раз."
         )
