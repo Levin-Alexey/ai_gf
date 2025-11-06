@@ -90,6 +90,19 @@ async def update_user_last_started(
     )
 
 
+async def update_user_utm_source(
+    session: AsyncSession,
+    telegram_id: int,
+    utm_source: str,
+) -> None:
+    """Обновить UTM метку пользователя"""
+    await session.execute(
+        update(User)
+        .where(User.telegram_id == telegram_id)
+        .values(utm_source=utm_source)
+    )
+
+
 async def update_user_tone(
     session: AsyncSession,
     telegram_id: int,

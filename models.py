@@ -117,6 +117,11 @@ class User(Base):
         default=None
     )
 
+    # UTM метка (источник привлечения)
+    utm_source: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True
+    )
+
     # Временные метки
     first_seen_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),

@@ -3,12 +3,12 @@
 """
 import logging
 from aiogram import Router, types
-from aiogram.filters import Command
+from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from database import async_session_maker
-from crud import get_or_create_user, update_user_last_started
+from crud import get_or_create_user, update_user_last_started, update_user_utm_source
 from utils import is_profile_complete
 from .menu import show_main_menu
 
@@ -16,9 +16,12 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 
-@router.message(Command('start'))
-async def cmd_start(message: types.Message, state: FSMContext):
+@router.message(CommandStart())
+async def cmd_start(message: types.Message, command: CommandStart, state: FSMContext):
     """Обработчик команды /start"""
+    # Извлекаем UTM метку из аргументов команды (например, /start?vk -> args='vk')
+    utm_source = command.args if command.args else None
+    
     async with async_session_maker() as session:
         # Получаем или создаём пользователя
         user, created = await get_or_create_user(
@@ -28,6 +31,13 @@ async def cmd_start(message: types.Message, state: FSMContext):
             first_name=message.from_user.first_name,
             last_name=message.from_user.last_name,
         )
+
+        # Сохраняем UTM метку, если она есть (только для новых пользователей или если еще не сохранена)
+        if utm_source and (created or not user.utm_source):
+            await update_user_utm_source(session, message.from_user.id, utm_source)
+            logger.info(
+                f"Сохранена UTM метка '{utm_source}' для пользователя {message.from_user.id}"
+            )
 
         # Обновляем время последнего /start
         await update_user_last_started(session, message.from_user.id)
