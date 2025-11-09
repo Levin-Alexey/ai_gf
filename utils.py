@@ -65,12 +65,17 @@ async def check_message_limit(
     today = datetime.utcnow().date().isoformat()  # "2025-10-22"
     key = f"msg_limit:{user.telegram_id}:{today}"
     
+    # Получаем низкоуровневый Redis-клиент (может приходить обёртка RedisClient)
+    redis_conn = getattr(redis, "redis", redis)
+    if redis_conn is None:
+        raise RuntimeError("Redis client is not connected")
+
     # Инкрементируем счётчик
-    count = await redis.incr(key)
+    count = await redis_conn.incr(key)
     
     # Устанавливаем TTL только при первом сообщении
     if count == 1:
-        await redis.expire(key, 86400)  # 24 часа
+        await redis_conn.expire(key, 86400)  # 24 часа
     
     # 3. Проверяем лимит
     if count > daily_limit:
