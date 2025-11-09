@@ -77,13 +77,23 @@ class VectorClient:
             # Создаем эмбеддинг для содержимого
             embedding = self.embedding_model.encode(content).tolist()
             
-            # Подготавливаем метаданные
-            memory_metadata = {
+            # Подготавливаем метаданные и удаляем значения None,
+            # так как ChromaDB не принимает None в метаданных
+            base_metadata = {
                 "user_id": user_id,
                 "memory_type": memory_type,
                 "importance": importance,
-                "tags": ",".join(tags) if tags else "",
-                **(metadata or {})
+                "tags": ",".join(tags) if tags else ""
+            }
+            extra_metadata = {
+                key: value
+                for key, value in (metadata or {}).items()
+                if value is not None
+            }
+            memory_metadata = {
+                key: value
+                for key, value in {**base_metadata, **extra_metadata}.items()
+                if value is not None
             }
             
             # Добавляем в коллекцию
