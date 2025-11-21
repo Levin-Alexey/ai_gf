@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from database import async_session_maker
-from sqlalchemy import update, select
+from sqlalchemy import select
 from models import User
 from config import (
     BOT_TOKEN,
@@ -87,7 +87,7 @@ async def activate_subscription(telegram_id: int, days: int) -> Optional[datetim
             user = result.scalar_one_or_none()
             
             if not user:
-                logger.error(f"Пользователь {telegram_id} не найден")
+                logger.error(f"❌ Пользователь {telegram_id} не найден в базе данных!")
                 return None
             
             # Устанавливаем/продлеваем дату окончания подписки
@@ -96,16 +96,18 @@ async def activate_subscription(telegram_id: int, days: int) -> Optional[datetim
                 user.subscription_expires_at and user.subscription_expires_at > now_utc
             ) else now_utc
             expires_at = base + timedelta(days=days)
+
+            logger.info(
+                f"ℹ️ Для пользователя {telegram_id} рассчитана новая дата окончания подписки: {expires_at}"
+            )
             
             # Обновляем подписку
-            stmt = (
-                update(User)
-                .where(User.telegram_id == telegram_id)
-                .values(subscription_expires_at=expires_at)
-            )
-            await session.execute(stmt)
+            user.subscription_expires_at = expires_at
+            session.add(user)
             await session.commit()
+            await session.refresh(user)
             
+            logger.info(f"✅ Изменения для пользователя {telegram_id} успешно зафиксированы в базе данных.")
             logger.info(
                 f"✅ Подписка активирована/продлена для {telegram_id} "
                 f"на {days} дней до {expires_at}"
@@ -113,7 +115,7 @@ async def activate_subscription(telegram_id: int, days: int) -> Optional[datetim
             return expires_at
             
     except Exception as e:
-        logger.error(f"Ошибка активации подписки: {e}")
+        logger.error(f"❌ КРИТИЧЕСКАЯ ОШИБКА активации подписки для {telegram_id}: {e}", exc_info=True)
         return None
 
 
@@ -198,41 +200,88 @@ async def yookassa_webhook(
         # Обрабатываем успешный платёж
         if notification.event == "payment.succeeded":
             payment = notification.object
+            payment_id = payment.get("id", "unknown")
+            
+            logger.info(
+                f"💰 Обработка успешного платежа ID: {payment_id}"
+            )
             
             # Извлекаем метаданные
             metadata = payment.get("metadata", {})
             telegram_id = metadata.get("telegram_id")
             plan_days = metadata.get("days")
             
+            logger.info(
+                f"📦 Metadata: telegram_id={telegram_id}, "
+                f"days={plan_days}"
+            )
+            
             if not telegram_id or not plan_days:
-                logger.error("❌ Отсутствуют telegram_id или days в metadata")
+                logger.error(
+                    f"❌ Отсутствуют telegram_id или days в metadata! "
+                    f"Payment ID: {payment_id}, metadata: {metadata}"
+                )
                 return JSONResponse(
                     status_code=400,
                     content={"error": "Missing metadata"}
                 )
             
+            try:
+                telegram_id_int = int(telegram_id)
+                plan_days_int = int(plan_days)
+            except (ValueError, TypeError) as e:
+                logger.error(
+                    f"❌ Невалидные значения в metadata! "
+                    f"telegram_id={telegram_id}, days={plan_days}, "
+                    f"error={e}"
+                )
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "Invalid metadata values"}
+                )
+            
             # Активируем подписку
+            logger.info(
+                f"⏳ Активация подписки для {telegram_id_int} "
+                f"на {plan_days_int} дней..."
+            )
+            
             expires_at = await activate_subscription(
-                int(telegram_id),
-                int(plan_days)
+                telegram_id_int,
+                plan_days_int
             )
             
             if expires_at:
-                logger.info(f"✅ Платёж обработан для {telegram_id}")
+                logger.info(
+                    f"✅ Платёж {payment_id} обработан для "
+                    f"{telegram_id_int}"
+                )
                 # Уведомление пользователю в Telegram
                 try:
-                    until_str = expires_at.astimezone(timezone.utc).strftime('%d.%m.%Y')
+                    until_str = expires_at.astimezone(
+                        timezone.utc
+                    ).strftime('%d.%m.%Y')
                     text = (
                         "✅ Оплата получена!\n\n"
-                        f"Подписка активирована до <b>{until_str}</b>.\n"
+                        f"Подписка активирована до "
+                        f"<b>{until_str}</b>.\n"
                         "Спасибо за поддержку! 💙"
                     )
-                    await send_telegram_message(int(telegram_id), text)
+                    await send_telegram_message(
+                        telegram_id_int, text
+                    )
                 except Exception as e:
-                    logger.error(f"Не удалось отправить подтверждение в Telegram: {e}")
+                    logger.error(
+                        f"Не удалось отправить подтверждение "
+                        f"в Telegram: {e}",
+                        exc_info=True
+                    )
                 return {"status": "success"}
             else:
-                logger.error(f"❌ Не удалось активировать подписку {telegram_id}")
+                logger.error(
+                    f"❌ Не удалось активировать подписку "
+                    f"для {telegram_id_int}! Payment ID: {payment_id}"
+                )
                 return JSONResponse(
                     status_code=500,
                     content={"error": "Subscription activation failed"}
